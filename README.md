@@ -1,11 +1,12 @@
 # The Octantis Project
-## An High-Level Explorer for Logic-in-Memory architectures.
+### An High-Level Explorer for Logic-in-Memory architectures. :mag:
 
-* -------------------------------------------- Licence --------------------------------------------- *
-** © Andrea Marchesin 2020 (andrea.marchesin@studenti.polito.it) for Politecnico di Torino **
-* -------------------------------------------------------------------------------------------------- *
-
+Licence
 -----------------------------------------------------------------------------------------------------
+© Andrea Marchesin 2020 (andrea.marchesin@studenti.polito.it) for Politecnico di Torino
+
+***
+
 Instructions for the compilation of the project - Warning: It may require many Gb of free memory!
 -----------------------------------------------------------------------------------------------------
  
