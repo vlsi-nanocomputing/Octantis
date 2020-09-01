@@ -65,7 +65,6 @@ define <8 x i64> @strict_vector_fptosi_v8f64_to_v8i64(<8 x double> %a) #0 {
 ; AVX512VL-32-NEXT:    fisttpll {{[0-9]+}}(%esp)
 ; AVX512VL-32-NEXT:    fldl {{[0-9]+}}(%esp)
 ; AVX512VL-32-NEXT:    fisttpll {{[0-9]+}}(%esp)
-; AVX512VL-32-NEXT:    wait
 ; AVX512VL-32-NEXT:    vmovd {{.*#+}} xmm0 = mem[0],zero,zero,zero
 ; AVX512VL-32-NEXT:    vpinsrd $1, {{[0-9]+}}(%esp), %xmm0, %xmm0
 ; AVX512VL-32-NEXT:    vpinsrd $2, {{[0-9]+}}(%esp), %xmm0, %xmm0
@@ -161,7 +160,6 @@ define <8 x i64> @strict_vector_fptoui_v8f64_to_v8i64(<8 x double> %a) #0 {
 ; AVX512VL-32-NEXT:    vmovsd %xmm3, {{[0-9]+}}(%esp)
 ; AVX512VL-32-NEXT:    fldl {{[0-9]+}}(%esp)
 ; AVX512VL-32-NEXT:    fisttpll {{[0-9]+}}(%esp)
-; AVX512VL-32-NEXT:    wait
 ; AVX512VL-32-NEXT:    movl $0, %eax
 ; AVX512VL-32-NEXT:    setae %al
 ; AVX512VL-32-NEXT:    shll $31, %eax
@@ -178,7 +176,6 @@ define <8 x i64> @strict_vector_fptoui_v8f64_to_v8i64(<8 x double> %a) #0 {
 ; AVX512VL-32-NEXT:    vmovsd %xmm4, {{[0-9]+}}(%esp)
 ; AVX512VL-32-NEXT:    fldl {{[0-9]+}}(%esp)
 ; AVX512VL-32-NEXT:    fisttpll {{[0-9]+}}(%esp)
-; AVX512VL-32-NEXT:    wait
 ; AVX512VL-32-NEXT:    movl $0, %eax
 ; AVX512VL-32-NEXT:    setae %al
 ; AVX512VL-32-NEXT:    shll $31, %eax
@@ -193,7 +190,6 @@ define <8 x i64> @strict_vector_fptoui_v8f64_to_v8i64(<8 x double> %a) #0 {
 ; AVX512VL-32-NEXT:    vmovsd %xmm3, {{[0-9]+}}(%esp)
 ; AVX512VL-32-NEXT:    fldl {{[0-9]+}}(%esp)
 ; AVX512VL-32-NEXT:    fisttpll {{[0-9]+}}(%esp)
-; AVX512VL-32-NEXT:    wait
 ; AVX512VL-32-NEXT:    movl $0, %eax
 ; AVX512VL-32-NEXT:    setae %al
 ; AVX512VL-32-NEXT:    shll $31, %eax
@@ -210,7 +206,6 @@ define <8 x i64> @strict_vector_fptoui_v8f64_to_v8i64(<8 x double> %a) #0 {
 ; AVX512VL-32-NEXT:    vmovsd %xmm4, {{[0-9]+}}(%esp)
 ; AVX512VL-32-NEXT:    fldl {{[0-9]+}}(%esp)
 ; AVX512VL-32-NEXT:    fisttpll {{[0-9]+}}(%esp)
-; AVX512VL-32-NEXT:    wait
 ; AVX512VL-32-NEXT:    movl $0, %eax
 ; AVX512VL-32-NEXT:    setae %al
 ; AVX512VL-32-NEXT:    shll $31, %eax
@@ -225,7 +220,6 @@ define <8 x i64> @strict_vector_fptoui_v8f64_to_v8i64(<8 x double> %a) #0 {
 ; AVX512VL-32-NEXT:    vmovsd %xmm3, {{[0-9]+}}(%esp)
 ; AVX512VL-32-NEXT:    fldl {{[0-9]+}}(%esp)
 ; AVX512VL-32-NEXT:    fisttpll {{[0-9]+}}(%esp)
-; AVX512VL-32-NEXT:    wait
 ; AVX512VL-32-NEXT:    movl $0, %eax
 ; AVX512VL-32-NEXT:    setae %al
 ; AVX512VL-32-NEXT:    shll $31, %eax
@@ -243,7 +237,6 @@ define <8 x i64> @strict_vector_fptoui_v8f64_to_v8i64(<8 x double> %a) #0 {
 ; AVX512VL-32-NEXT:    vmovsd %xmm4, (%esp)
 ; AVX512VL-32-NEXT:    fldl (%esp)
 ; AVX512VL-32-NEXT:    fisttpll (%esp)
-; AVX512VL-32-NEXT:    wait
 ; AVX512VL-32-NEXT:    setae %dl
 ; AVX512VL-32-NEXT:    shll $31, %edx
 ; AVX512VL-32-NEXT:    xorl {{[0-9]+}}(%esp), %edx
@@ -257,7 +250,6 @@ define <8 x i64> @strict_vector_fptoui_v8f64_to_v8i64(<8 x double> %a) #0 {
 ; AVX512VL-32-NEXT:    vmovsd %xmm3, {{[0-9]+}}(%esp)
 ; AVX512VL-32-NEXT:    fldl {{[0-9]+}}(%esp)
 ; AVX512VL-32-NEXT:    fisttpll {{[0-9]+}}(%esp)
-; AVX512VL-32-NEXT:    wait
 ; AVX512VL-32-NEXT:    setae %al
 ; AVX512VL-32-NEXT:    shll $31, %eax
 ; AVX512VL-32-NEXT:    xorl {{[0-9]+}}(%esp), %eax
@@ -270,7 +262,6 @@ define <8 x i64> @strict_vector_fptoui_v8f64_to_v8i64(<8 x double> %a) #0 {
 ; AVX512VL-32-NEXT:    vmovsd %xmm0, {{[0-9]+}}(%esp)
 ; AVX512VL-32-NEXT:    fldl {{[0-9]+}}(%esp)
 ; AVX512VL-32-NEXT:    fisttpll {{[0-9]+}}(%esp)
-; AVX512VL-32-NEXT:    wait
 ; AVX512VL-32-NEXT:    vmovd {{.*#+}} xmm0 = mem[0],zero,zero,zero
 ; AVX512VL-32-NEXT:    vpinsrd $1, %eax, %xmm0, %xmm0
 ; AVX512VL-32-NEXT:    vpinsrd $2, (%esp), %xmm0, %xmm0
@@ -379,7 +370,6 @@ define <8 x i64> @strict_vector_fptosi_v8f32_to_v8i64(<8 x float> %a) #0 {
 ; AVX512VL-32-NEXT:    fisttpll {{[0-9]+}}(%esp)
 ; AVX512VL-32-NEXT:    flds {{[0-9]+}}(%esp)
 ; AVX512VL-32-NEXT:    fisttpll {{[0-9]+}}(%esp)
-; AVX512VL-32-NEXT:    wait
 ; AVX512VL-32-NEXT:    vmovd {{.*#+}} xmm0 = mem[0],zero,zero,zero
 ; AVX512VL-32-NEXT:    vpinsrd $1, {{[0-9]+}}(%esp), %xmm0, %xmm0
 ; AVX512VL-32-NEXT:    vpinsrd $2, {{[0-9]+}}(%esp), %xmm0, %xmm0
@@ -475,7 +465,6 @@ define <8 x i64> @strict_vector_fptoui_v8f32_to_v8i64(<8 x float> %a) #0 {
 ; AVX512VL-32-NEXT:    vmovss %xmm3, {{[0-9]+}}(%esp)
 ; AVX512VL-32-NEXT:    flds {{[0-9]+}}(%esp)
 ; AVX512VL-32-NEXT:    fisttpll {{[0-9]+}}(%esp)
-; AVX512VL-32-NEXT:    wait
 ; AVX512VL-32-NEXT:    movl $0, %eax
 ; AVX512VL-32-NEXT:    setae %al
 ; AVX512VL-32-NEXT:    shll $31, %eax
@@ -491,7 +480,6 @@ define <8 x i64> @strict_vector_fptoui_v8f32_to_v8i64(<8 x float> %a) #0 {
 ; AVX512VL-32-NEXT:    vmovss %xmm3, {{[0-9]+}}(%esp)
 ; AVX512VL-32-NEXT:    flds {{[0-9]+}}(%esp)
 ; AVX512VL-32-NEXT:    fisttpll {{[0-9]+}}(%esp)
-; AVX512VL-32-NEXT:    wait
 ; AVX512VL-32-NEXT:    movl $0, %eax
 ; AVX512VL-32-NEXT:    setae %al
 ; AVX512VL-32-NEXT:    shll $31, %eax
@@ -507,7 +495,6 @@ define <8 x i64> @strict_vector_fptoui_v8f32_to_v8i64(<8 x float> %a) #0 {
 ; AVX512VL-32-NEXT:    vmovss %xmm3, {{[0-9]+}}(%esp)
 ; AVX512VL-32-NEXT:    flds {{[0-9]+}}(%esp)
 ; AVX512VL-32-NEXT:    fisttpll {{[0-9]+}}(%esp)
-; AVX512VL-32-NEXT:    wait
 ; AVX512VL-32-NEXT:    movl $0, %eax
 ; AVX512VL-32-NEXT:    setae %al
 ; AVX512VL-32-NEXT:    shll $31, %eax
@@ -524,7 +511,6 @@ define <8 x i64> @strict_vector_fptoui_v8f32_to_v8i64(<8 x float> %a) #0 {
 ; AVX512VL-32-NEXT:    vmovss %xmm4, {{[0-9]+}}(%esp)
 ; AVX512VL-32-NEXT:    flds {{[0-9]+}}(%esp)
 ; AVX512VL-32-NEXT:    fisttpll {{[0-9]+}}(%esp)
-; AVX512VL-32-NEXT:    wait
 ; AVX512VL-32-NEXT:    movl $0, %eax
 ; AVX512VL-32-NEXT:    setae %al
 ; AVX512VL-32-NEXT:    shll $31, %eax
@@ -539,7 +525,6 @@ define <8 x i64> @strict_vector_fptoui_v8f32_to_v8i64(<8 x float> %a) #0 {
 ; AVX512VL-32-NEXT:    vmovss %xmm4, {{[0-9]+}}(%esp)
 ; AVX512VL-32-NEXT:    flds {{[0-9]+}}(%esp)
 ; AVX512VL-32-NEXT:    fisttpll {{[0-9]+}}(%esp)
-; AVX512VL-32-NEXT:    wait
 ; AVX512VL-32-NEXT:    movl $0, %eax
 ; AVX512VL-32-NEXT:    setae %al
 ; AVX512VL-32-NEXT:    shll $31, %eax
@@ -556,7 +541,6 @@ define <8 x i64> @strict_vector_fptoui_v8f32_to_v8i64(<8 x float> %a) #0 {
 ; AVX512VL-32-NEXT:    vmovss %xmm4, (%esp)
 ; AVX512VL-32-NEXT:    flds (%esp)
 ; AVX512VL-32-NEXT:    fisttpll (%esp)
-; AVX512VL-32-NEXT:    wait
 ; AVX512VL-32-NEXT:    setae %dl
 ; AVX512VL-32-NEXT:    shll $31, %edx
 ; AVX512VL-32-NEXT:    xorl {{[0-9]+}}(%esp), %edx
@@ -571,7 +555,6 @@ define <8 x i64> @strict_vector_fptoui_v8f32_to_v8i64(<8 x float> %a) #0 {
 ; AVX512VL-32-NEXT:    vmovss %xmm3, {{[0-9]+}}(%esp)
 ; AVX512VL-32-NEXT:    flds {{[0-9]+}}(%esp)
 ; AVX512VL-32-NEXT:    fisttpll {{[0-9]+}}(%esp)
-; AVX512VL-32-NEXT:    wait
 ; AVX512VL-32-NEXT:    setae %al
 ; AVX512VL-32-NEXT:    shll $31, %eax
 ; AVX512VL-32-NEXT:    xorl {{[0-9]+}}(%esp), %eax
@@ -584,7 +567,6 @@ define <8 x i64> @strict_vector_fptoui_v8f32_to_v8i64(<8 x float> %a) #0 {
 ; AVX512VL-32-NEXT:    vmovss %xmm0, {{[0-9]+}}(%esp)
 ; AVX512VL-32-NEXT:    flds {{[0-9]+}}(%esp)
 ; AVX512VL-32-NEXT:    fisttpll {{[0-9]+}}(%esp)
-; AVX512VL-32-NEXT:    wait
 ; AVX512VL-32-NEXT:    vmovd {{.*#+}} xmm0 = mem[0],zero,zero,zero
 ; AVX512VL-32-NEXT:    vpinsrd $1, %eax, %xmm0, %xmm0
 ; AVX512VL-32-NEXT:    vpinsrd $2, (%esp), %xmm0, %xmm0

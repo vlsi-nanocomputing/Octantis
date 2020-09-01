@@ -531,14 +531,6 @@ bool BasicAAResult::DecomposeGEPExpression(const Value *V,
       return false;
     }
 
-    // Don't attempt to analyze GEPs if index scale is not a compile-time
-    // constant.
-    if (isa<ScalableVectorType>(GEPOp->getSourceElementType())) {
-      Decomposed.Base = V;
-      Decomposed.HasCompileTimeConstantScale = false;
-      return false;
-    }
-
     unsigned AS = GEPOp->getPointerAddressSpace();
     // Walk the indices of the GEP, accumulating them into BaseOff/VarIndices.
     gep_type_iterator GTI = gep_type_begin(GEPOp);
@@ -565,16 +557,15 @@ bool BasicAAResult::DecomposeGEPExpression(const Value *V,
         if (CIdx->isZero())
           continue;
         Decomposed.OtherOffset +=
-            (DL.getTypeAllocSize(GTI.getIndexedType()).getFixedSize() *
-             CIdx->getValue().sextOrSelf(MaxPointerSize))
-                .sextOrTrunc(MaxPointerSize);
+          (DL.getTypeAllocSize(GTI.getIndexedType()) *
+            CIdx->getValue().sextOrSelf(MaxPointerSize))
+              .sextOrTrunc(MaxPointerSize);
         continue;
       }
 
       GepHasConstantOffset = false;
 
-      APInt Scale(MaxPointerSize,
-                  DL.getTypeAllocSize(GTI.getIndexedType()).getFixedSize());
+      APInt Scale(MaxPointerSize, DL.getTypeAllocSize(GTI.getIndexedType()));
       unsigned ZExtBits = 0, SExtBits = 0;
 
       // If the integer type is smaller than the pointer size, it is implicitly
@@ -732,7 +723,7 @@ FunctionModRefBehavior BasicAAResult::getModRefBehavior(const CallBase *Call) {
   if (Call->onlyReadsMemory())
     Min = FMRB_OnlyReadsMemory;
   else if (Call->doesNotReadMemory())
-    Min = FMRB_OnlyWritesMemory;
+    Min = FMRB_DoesNotReadMemory;
 
   if (Call->onlyAccessesArgMemory())
     Min = FunctionModRefBehavior(Min & FMRB_OnlyAccessesArgumentPointees);
@@ -765,7 +756,7 @@ FunctionModRefBehavior BasicAAResult::getModRefBehavior(const Function *F) {
   if (F->onlyReadsMemory())
     Min = FMRB_OnlyReadsMemory;
   else if (F->doesNotReadMemory())
-    Min = FMRB_OnlyWritesMemory;
+    Min = FMRB_DoesNotReadMemory;
 
   if (F->onlyAccessesArgMemory())
     Min = FunctionModRefBehavior(Min & FMRB_OnlyAccessesArgumentPointees);
@@ -969,7 +960,7 @@ ModRefInfo BasicAAResult::getModRefInfo(const CallBase *Call,
     }
   }
 
-  // If the call is malloc/calloc like, we can assume that it doesn't
+  // If the call is to malloc or calloc, we can assume that it doesn't
   // modify any IR visible value.  This is only valid because we assume these
   // routines do not read values visible in the IR.  TODO: Consider special
   // casing realloc and strdup routines which access only their arguments as
@@ -1154,11 +1145,11 @@ static AliasResult aliasSameBasePointerGEPs(const GEPOperator *GEP1,
     GEP1->getSourceElementType(), IntermediateIndices);
   StructType *LastIndexedStruct = dyn_cast<StructType>(Ty);
 
-  if (isa<ArrayType>(Ty) || isa<VectorType>(Ty)) {
+  if (isa<SequentialType>(Ty)) {
     // We know that:
     // - both GEPs begin indexing from the exact same pointer;
     // - the last indices in both GEPs are constants, indexing into a sequential
-    //   type (array or vector);
+    //   type (array or pointer);
     // - both GEPs only index through arrays prior to that.
     //
     // Because array indices greater than the number of elements are valid in
@@ -1166,9 +1157,8 @@ static AliasResult aliasSameBasePointerGEPs(const GEPOperator *GEP1,
     // GEP1 and GEP2 we cannot guarantee that the last indexed arrays don't
     // partially overlap. We also need to check that the loaded size matches
     // the element size, otherwise we could still have overlap.
-    Type *LastElementTy = GetElementPtrInst::getTypeAtIndex(Ty, (uint64_t)0);
     const uint64_t ElementSize =
-        DL.getTypeStoreSize(LastElementTy).getFixedSize();
+        DL.getTypeStoreSize(cast<SequentialType>(Ty)->getElementType());
     if (V1Size != ElementSize || V2Size != ElementSize)
       return MayAlias;
 
@@ -1326,19 +1316,11 @@ AliasResult BasicAAResult::aliasGEP(
   unsigned MaxPointerSize = getMaxPointerSize(DL);
   DecompGEP1.StructOffset = DecompGEP1.OtherOffset = APInt(MaxPointerSize, 0);
   DecompGEP2.StructOffset = DecompGEP2.OtherOffset = APInt(MaxPointerSize, 0);
-  DecompGEP1.HasCompileTimeConstantScale =
-      DecompGEP2.HasCompileTimeConstantScale = true;
 
   bool GEP1MaxLookupReached =
     DecomposeGEPExpression(GEP1, DecompGEP1, DL, &AC, DT);
   bool GEP2MaxLookupReached =
     DecomposeGEPExpression(V2, DecompGEP2, DL, &AC, DT);
-
-  // Don't attempt to analyze the decomposed GEP if index scale is not a
-  // compile-time constant.
-  if (!DecompGEP1.HasCompileTimeConstantScale ||
-      !DecompGEP2.HasCompileTimeConstantScale)
-    return MayAlias;
 
   APInt GEP1BaseOffset = DecompGEP1.StructOffset + DecompGEP1.OtherOffset;
   APInt GEP2BaseOffset = DecompGEP2.StructOffset + DecompGEP2.OtherOffset;
@@ -2077,13 +2059,12 @@ char BasicAAWrapperPass::ID = 0;
 void BasicAAWrapperPass::anchor() {}
 
 INITIALIZE_PASS_BEGIN(BasicAAWrapperPass, "basicaa",
-                      "Basic Alias Analysis (stateless AA impl)", true, true)
+                      "Basic Alias Analysis (stateless AA impl)", false, true)
 INITIALIZE_PASS_DEPENDENCY(AssumptionCacheTracker)
 INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(TargetLibraryInfoWrapperPass)
-INITIALIZE_PASS_DEPENDENCY(PhiValuesWrapperPass)
 INITIALIZE_PASS_END(BasicAAWrapperPass, "basicaa",
-                    "Basic Alias Analysis (stateless AA impl)", true, true)
+                    "Basic Alias Analysis (stateless AA impl)", false, true)
 
 FunctionPass *llvm::createBasicAAWrapperPass() {
   return new BasicAAWrapperPass();

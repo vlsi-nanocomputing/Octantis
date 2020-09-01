@@ -702,9 +702,3 @@ BreakAntiDependencies(const std::vector<SUnit> &SUnits,
 
   return Broken;
 }
-
-AntiDepBreaker *
-llvm::createCriticalAntiDepBreaker(MachineFunction &MFi,
-                                   const RegisterClassInfo &RCI) {
-  return new CriticalAntiDepBreaker(MFi, RCI);
-}

@@ -400,9 +400,7 @@ bool AArch64StackTagging::isInterestingAlloca(const AllocaInst &AI) {
       // dynamic alloca instrumentation for them as well.
       !AI.isUsedWithInAlloca() &&
       // swifterror allocas are register promoted by ISel
-      !AI.isSwiftError() &&
-      // safe allocas are not interesting
-      !AI.getMetadata("stack-safe");
+      !AI.isSwiftError();
   return IsInteresting;
 }
 
@@ -484,7 +482,7 @@ void AArch64StackTagging::alignAndPadAlloca(AllocaInfo &Info) {
   auto *NewAI = new AllocaInst(
       TypeWithPadding, Info.AI->getType()->getAddressSpace(), nullptr, "", Info.AI);
   NewAI->takeName(Info.AI);
-  NewAI->setAlignment(Info.AI->getAlign());
+  NewAI->setAlignment(MaybeAlign(Info.AI->getAlignment()));
   NewAI->setUsedWithInAlloca(Info.AI->isUsedWithInAlloca());
   NewAI->setSwiftError(Info.AI->isSwiftError());
   NewAI->copyMetadata(*Info.AI);

@@ -58,7 +58,7 @@ AArch64LegalizerInfo::AArch64LegalizerInfo(const AArch64Subtarget &ST) {
     return;
   }
 
-  getActionDefinitionsBuilder({G_IMPLICIT_DEF, G_FREEZE})
+  getActionDefinitionsBuilder(G_IMPLICIT_DEF)
     .legalFor({p0, s1, s8, s16, s32, s64, v2s32, v4s32, v2s64})
     .clampScalar(0, s1, s64)
     .widenScalarToNextPow2(0, 8)
@@ -108,7 +108,7 @@ AArch64LegalizerInfo::AArch64LegalizerInfo(const AArch64Subtarget &ST) {
       .legalFor({{p0, s64}})
       .clampScalar(1, s64, s64);
 
-  getActionDefinitionsBuilder(G_PTRMASK).legalFor({{p0, s64}});
+  getActionDefinitionsBuilder(G_PTR_MASK).legalFor({p0});
 
   getActionDefinitionsBuilder({G_SDIV, G_UDIV})
       .legalFor({s32, s64})
@@ -640,13 +640,13 @@ bool AArch64LegalizerInfo::legalizeCustom(MachineInstr &MI,
 }
 
 bool AArch64LegalizerInfo::legalizeIntrinsic(
-    MachineInstr &MI, MachineIRBuilder &MIRBuilder,
-    GISelChangeObserver &Observer) const {
+    MachineInstr &MI, MachineRegisterInfo &MRI,
+    MachineIRBuilder &MIRBuilder) const {
   switch (MI.getIntrinsicID()) {
   case Intrinsic::memcpy:
   case Intrinsic::memset:
   case Intrinsic::memmove:
-    if (createMemLibcall(MIRBuilder, *MIRBuilder.getMRI(), MI) ==
+    if (createMemLibcall(MIRBuilder, MRI, MI) ==
         LegalizerHelper::UnableToLegalize)
       return false;
     MI.eraseFromParent();
@@ -675,7 +675,7 @@ bool AArch64LegalizerInfo::legalizeShlAshrLshr(
   if (Amount > 31)
     return true; // This will have to remain a register variant.
   assert(MRI.getType(AmtReg).getSizeInBits() == 32);
-  MIRBuilder.setInstrAndDebugLoc(MI);
+  MIRBuilder.setInstr(MI);
   auto ExtCst = MIRBuilder.buildZExt(LLT::scalar(64), AmtReg);
   MI.getOperand(2).setReg(ExtCst.getReg(0));
   return true;
@@ -704,16 +704,17 @@ bool AArch64LegalizerInfo::legalizeLoadStore(
     return false;
   }
 
-  MIRBuilder.setInstrAndDebugLoc(MI);
+  MIRBuilder.setInstr(MI);
   unsigned PtrSize = ValTy.getElementType().getSizeInBits();
   const LLT NewTy = LLT::vector(ValTy.getNumElements(), PtrSize);
   auto &MMO = **MI.memoperands_begin();
   if (MI.getOpcode() == TargetOpcode::G_STORE) {
-    auto Bitcast = MIRBuilder.buildBitcast(NewTy, ValReg);
-    MIRBuilder.buildStore(Bitcast.getReg(0), MI.getOperand(1), MMO);
+    auto Bitcast = MIRBuilder.buildBitcast({NewTy}, {ValReg});
+    MIRBuilder.buildStore(Bitcast.getReg(0), MI.getOperand(1).getReg(), MMO);
   } else {
-    auto NewLoad = MIRBuilder.buildLoad(NewTy, MI.getOperand(1), MMO);
-    MIRBuilder.buildBitcast(ValReg, NewLoad);
+    Register NewReg = MRI.createGenericVirtualRegister(NewTy);
+    auto NewLoad = MIRBuilder.buildLoad(NewReg, MI.getOperand(1).getReg(), MMO);
+    MIRBuilder.buildBitcast({ValReg}, {NewLoad});
   }
   MI.eraseFromParent();
   return true;
@@ -722,9 +723,9 @@ bool AArch64LegalizerInfo::legalizeLoadStore(
 bool AArch64LegalizerInfo::legalizeVaArg(MachineInstr &MI,
                                          MachineRegisterInfo &MRI,
                                          MachineIRBuilder &MIRBuilder) const {
-  MIRBuilder.setInstrAndDebugLoc(MI);
+  MIRBuilder.setInstr(MI);
   MachineFunction &MF = MIRBuilder.getMF();
-  Align Alignment(MI.getOperand(2).getImm());
+  unsigned Align = MI.getOperand(2).getImm();
   Register Dst = MI.getOperand(0).getReg();
   Register ListPtr = MI.getOperand(1).getReg();
 
@@ -732,19 +733,21 @@ bool AArch64LegalizerInfo::legalizeVaArg(MachineInstr &MI,
   LLT IntPtrTy = LLT::scalar(PtrTy.getSizeInBits());
 
   const unsigned PtrSize = PtrTy.getSizeInBits() / 8;
-  const Align PtrAlign = Align(PtrSize);
-  auto List = MIRBuilder.buildLoad(
-      PtrTy, ListPtr,
+  Register List = MRI.createGenericVirtualRegister(PtrTy);
+  MIRBuilder.buildLoad(
+      List, ListPtr,
       *MF.getMachineMemOperand(MachinePointerInfo(), MachineMemOperand::MOLoad,
-                               PtrSize, PtrAlign));
+                               PtrSize, /* Align = */ PtrSize));
 
-  MachineInstrBuilder DstPtr;
-  if (Alignment > PtrAlign) {
+  Register DstPtr;
+  if (Align > PtrSize) {
     // Realign the list to the actual required alignment.
-    auto AlignMinus1 =
-        MIRBuilder.buildConstant(IntPtrTy, Alignment.value() - 1);
+    auto AlignMinus1 = MIRBuilder.buildConstant(IntPtrTy, Align - 1);
+
     auto ListTmp = MIRBuilder.buildPtrAdd(PtrTy, List, AlignMinus1.getReg(0));
-    DstPtr = MIRBuilder.buildMaskLowPtrBits(PtrTy, ListTmp, Log2(Alignment));
+
+    DstPtr = MRI.createGenericVirtualRegister(PtrTy);
+    MIRBuilder.buildPtrMask(DstPtr, ListTmp, Log2_64(Align));
   } else
     DstPtr = List;
 
@@ -752,16 +755,16 @@ bool AArch64LegalizerInfo::legalizeVaArg(MachineInstr &MI,
   MIRBuilder.buildLoad(
       Dst, DstPtr,
       *MF.getMachineMemOperand(MachinePointerInfo(), MachineMemOperand::MOLoad,
-                               ValSize, std::max(Alignment, PtrAlign)));
+                               ValSize, std::max(Align, PtrSize)));
 
-  auto Size = MIRBuilder.buildConstant(IntPtrTy, alignTo(ValSize, PtrAlign));
+  auto Size = MIRBuilder.buildConstant(IntPtrTy, alignTo(ValSize, PtrSize));
 
   auto NewList = MIRBuilder.buildPtrAdd(PtrTy, DstPtr, Size.getReg(0));
 
-  MIRBuilder.buildStore(NewList, ListPtr,
-                        *MF.getMachineMemOperand(MachinePointerInfo(),
-                                                 MachineMemOperand::MOStore,
-                                                 PtrSize, PtrAlign));
+  MIRBuilder.buildStore(
+      NewList, ListPtr,
+      *MF.getMachineMemOperand(MachinePointerInfo(), MachineMemOperand::MOStore,
+                               PtrSize, /* Align = */ PtrSize));
 
   MI.eraseFromParent();
   return true;

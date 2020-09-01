@@ -1,0 +1,10 @@
+digraph "octantis::LiMCompiler"
+{
+  edge [fontname="Helvetica",fontsize="10",labelfontname="Helvetica",labelfontsize="10"];
+  node [fontname="Helvetica",fontsize="10",shape=record];
+  Node1 [label="octantis::LiMCompiler",height=0.2,width=0.4,color="black", fillcolor="grey75", style="filled", fontcolor="black"];
+  Node2 -> Node1 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" FSMLim" ,fontname="Helvetica"];
+  Node2 [label="octantis::FiniteStateMachine",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$classoctantis_1_1FiniteStateMachine.html",tooltip="Class useful for the definition of the FSM of the algorithm. "];
+  Node3 -> Node1 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" MemArray" ,fontname="Helvetica"];
+  Node3 [label="octantis::LiMArray",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$classoctantis_1_1LiMArray.html",tooltip="Class implementing the necessary structures to model the LiM Unit. "];
+}

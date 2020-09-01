@@ -24,24 +24,6 @@ tablegen("AMDGPUGenGlobalISel") {
   td_file = "AMDGPUGISel.td"
 }
 
-tablegen("AMDGPUGenPreLegalizeGICombiner") {
-  visibility = [ ":LLVMAMDGPUCodeGen" ]
-  args = [
-    "-gen-global-isel-combiner",
-    "-combiners=AMDGPUPreLegalizerCombinerHelper",
-  ]
-  td_file = "AMDGPUGISel.td"
-}
-
-tablegen("AMDGPUGenPostLegalizeGICombiner") {
-  visibility = [ ":LLVMAMDGPUCodeGen" ]
-  args = [
-    "-gen-global-isel-combiner",
-    "-combiners=AMDGPUPostLegalizerCombinerHelper",
-  ]
-  td_file = "AMDGPUGISel.td"
-}
-
 tablegen("AMDGPUGenMCPseudoLowering") {
   visibility = [ ":LLVMAMDGPUCodeGen" ]
   args = [ "-gen-pseudo-lowering" ]
@@ -79,8 +61,6 @@ static_library("LLVMAMDGPUCodeGen") {
     ":AMDGPUGenDAGISel",
     ":AMDGPUGenGlobalISel",
     ":AMDGPUGenMCPseudoLowering",
-    ":AMDGPUGenPostLegalizeGICombiner",
-    ":AMDGPUGenPreLegalizeGICombiner",
     ":AMDGPUGenRegisterBank",
     ":R600GenCallingConv",
     ":R600GenDAGISel",
@@ -113,7 +93,6 @@ static_library("LLVMAMDGPUCodeGen") {
     "AMDGPUAtomicOptimizer.cpp",
     "AMDGPUCallLowering.cpp",
     "AMDGPUCodeGenPrepare.cpp",
-    "AMDGPUExportClustering.cpp",
     "AMDGPUFixFunctionBitcasts.cpp",
     "AMDGPUFrameLowering.cpp",
     "AMDGPUGlobalISelUtils.cpp",
@@ -136,12 +115,11 @@ static_library("LLVMAMDGPUCodeGen") {
     "AMDGPUMacroFusion.cpp",
     "AMDGPUOpenCLEnqueuedBlockLowering.cpp",
     "AMDGPUPerfHintAnalysis.cpp",
-    "AMDGPUPostLegalizerCombiner.cpp",
-    "AMDGPUPreLegalizerCombiner.cpp",
     "AMDGPUPrintfRuntimeBinding.cpp",
     "AMDGPUPromoteAlloca.cpp",
     "AMDGPUPropagateAttributes.cpp",
     "AMDGPURegisterBankInfo.cpp",
+    "AMDGPURegisterInfo.cpp",
     "AMDGPURewriteOutArguments.cpp",
     "AMDGPUSubtarget.cpp",
     "AMDGPUTargetMachine.cpp",
@@ -182,7 +160,6 @@ static_library("LLVMAMDGPUCodeGen") {
     "SIFormMemoryClauses.cpp",
     "SIFrameLowering.cpp",
     "SIISelLowering.cpp",
-    "SIInsertHardClauses.cpp",
     "SIInsertSkips.cpp",
     "SIInsertWaitcnts.cpp",
     "SIInstrInfo.cpp",
@@ -197,9 +174,7 @@ static_library("LLVMAMDGPUCodeGen") {
     "SIOptimizeExecMasking.cpp",
     "SIOptimizeExecMaskingPreRA.cpp",
     "SIPeepholeSDWA.cpp",
-    "SIPostRABundler.cpp",
     "SIPreAllocateWWMRegs.cpp",
-    "SIPreEmitPeephole.cpp",
     "SIRegisterInfo.cpp",
     "SIRemoveShortExecBranches.cpp",
     "SIShrinkInstructions.cpp",

@@ -138,7 +138,6 @@ static const unsigned UninitializedAddressSpace =
 namespace {
 
 using ValueToAddrSpaceMapTy = DenseMap<const Value *, unsigned>;
-using PostorderStackTy = llvm::SmallVector<PointerIntPair<Value *, 1, bool>, 4>;
 
 /// InferAddressSpaces
 class InferAddressSpaces : public FunctionPass {
@@ -183,14 +182,15 @@ private:
       const ValueToAddrSpaceMapTy &InferredAddrSpace, Function *F) const;
 
   void appendsFlatAddressExpressionToPostorderStack(
-      Value *V, PostorderStackTy &PostorderStack,
-      DenseSet<Value *> &Visited) const;
+    Value *V, std::vector<std::pair<Value *, bool>> &PostorderStack,
+    DenseSet<Value *> &Visited) const;
 
   bool rewriteIntrinsicOperands(IntrinsicInst *II,
                                 Value *OldV, Value *NewV) const;
-  void collectRewritableIntrinsicOperands(IntrinsicInst *II,
-                                          PostorderStackTy &PostorderStack,
-                                          DenseSet<Value *> &Visited) const;
+  void collectRewritableIntrinsicOperands(
+    IntrinsicInst *II,
+    std::vector<std::pair<Value *, bool>> &PostorderStack,
+    DenseSet<Value *> &Visited) const;
 
   std::vector<WeakTrackingVH> collectFlatAddressExpressions(Function &F) const;
 
@@ -281,7 +281,7 @@ bool InferAddressSpaces::rewriteIntrinsicOperands(IntrinsicInst *II,
 }
 
 void InferAddressSpaces::collectRewritableIntrinsicOperands(
-    IntrinsicInst *II, PostorderStackTy &PostorderStack,
+    IntrinsicInst *II, std::vector<std::pair<Value *, bool>> &PostorderStack,
     DenseSet<Value *> &Visited) const {
   auto IID = II->getIntrinsicID();
   switch (IID) {
@@ -305,7 +305,7 @@ void InferAddressSpaces::collectRewritableIntrinsicOperands(
 // If V is an unvisited flat address expression, appends V to PostorderStack
 // and marks it as visited.
 void InferAddressSpaces::appendsFlatAddressExpressionToPostorderStack(
-    Value *V, PostorderStackTy &PostorderStack,
+    Value *V, std::vector<std::pair<Value *, bool>> &PostorderStack,
     DenseSet<Value *> &Visited) const {
   assert(V->getType()->isPointerTy());
 
@@ -314,7 +314,7 @@ void InferAddressSpaces::appendsFlatAddressExpressionToPostorderStack(
   if (ConstantExpr *CE = dyn_cast<ConstantExpr>(V)) {
     // TODO: Look in non-address parts, like icmp operands.
     if (isAddressExpression(*CE) && Visited.insert(CE).second)
-      PostorderStack.emplace_back(CE, false);
+      PostorderStack.push_back(std::make_pair(CE, false));
 
     return;
   }
@@ -322,7 +322,7 @@ void InferAddressSpaces::appendsFlatAddressExpressionToPostorderStack(
   if (isAddressExpression(*V) &&
       V->getType()->getPointerAddressSpace() == FlatAddrSpace) {
     if (Visited.insert(V).second) {
-      PostorderStack.emplace_back(V, false);
+      PostorderStack.push_back(std::make_pair(V, false));
 
       Operator *Op = cast<Operator>(V);
       for (unsigned I = 0, E = Op->getNumOperands(); I != E; ++I) {
@@ -341,7 +341,7 @@ std::vector<WeakTrackingVH>
 InferAddressSpaces::collectFlatAddressExpressions(Function &F) const {
   // This function implements a non-recursive postorder traversal of a partial
   // use-def graph of function F.
-  PostorderStackTy PostorderStack;
+  std::vector<std::pair<Value *, bool>> PostorderStack;
   // The set of visited expressions.
   DenseSet<Value *> Visited;
 
@@ -388,17 +388,17 @@ InferAddressSpaces::collectFlatAddressExpressions(Function &F) const {
 
   std::vector<WeakTrackingVH> Postorder; // The resultant postorder.
   while (!PostorderStack.empty()) {
-    Value *TopVal = PostorderStack.back().getPointer();
+    Value *TopVal = PostorderStack.back().first;
     // If the operands of the expression on the top are already explored,
     // adds that expression to the resultant postorder.
-    if (PostorderStack.back().getInt()) {
+    if (PostorderStack.back().second) {
       if (TopVal->getType()->getPointerAddressSpace() == FlatAddrSpace)
         Postorder.push_back(TopVal);
       PostorderStack.pop_back();
       continue;
     }
     // Otherwise, adds its operands to the stack and explores them.
-    PostorderStack.back().setInt(true);
+    PostorderStack.back().second = true;
     for (Value *PtrOperand : getPointerOperands(*TopVal)) {
       appendsFlatAddressExpressionToPostorderStack(PtrOperand, PostorderStack,
                                                    Visited);

@@ -9,7 +9,6 @@
 #include "Error.h"
 #include "llvm/DebugInfo/DWARF/DWARFContext.h"
 #include "llvm/DebugInfo/DWARF/DWARFDebugArangeSet.h"
-#include "llvm/DebugInfo/DWARF/DWARFDebugRangeList.h"
 #include "llvm/DebugInfo/DWARF/DWARFFormValue.h"
 #include "llvm/ObjectYAML/DWARFYAML.h"
 
@@ -57,15 +56,13 @@ void dumpDebugStrings(DWARFContext &DCtx, DWARFYAML::Data &Y) {
   }
 }
 
-Error dumpDebugARanges(DWARFContext &DCtx, DWARFYAML::Data &Y) {
-  DWARFDataExtractor ArangesData(DCtx.getDWARFObj().getArangesSection(),
-                                 DCtx.isLittleEndian(), 0);
+void dumpDebugARanges(DWARFContext &DCtx, DWARFYAML::Data &Y) {
+  DataExtractor ArangesData(DCtx.getDWARFObj().getArangesSection(),
+                            DCtx.isLittleEndian(), 0);
   uint64_t Offset = 0;
   DWARFDebugArangeSet Set;
 
-  while (ArangesData.isValidOffset(Offset)) {
-    if (Error E = Set.extract(ArangesData, &Offset))
-      return E;
+  while (Set.extract(ArangesData, &Offset)) {
     DWARFYAML::ARange Range;
     Range.Length.setLength(Set.getHeader().Length);
     Range.Version = Set.getHeader().Version;
@@ -80,38 +77,6 @@ Error dumpDebugARanges(DWARFContext &DCtx, DWARFYAML::Data &Y) {
     }
     Y.ARanges.push_back(Range);
   }
-  return ErrorSuccess();
-}
-
-Error dumpDebugRanges(DWARFContext &DCtx, DWARFYAML::Data &Y) {
-  // We are assuming all address byte sizes will be consistent across all
-  // compile units.
-  uint8_t AddrSize = 0;
-  for (const auto &CU : DCtx.compile_units()) {
-    const uint8_t CUAddrSize = CU->getAddressByteSize();
-    if (AddrSize == 0)
-      AddrSize = CUAddrSize;
-    else if (CUAddrSize != AddrSize)
-      return createStringError(std::errc::invalid_argument,
-                               "address sizes vary in different compile units");
-  }
-
-  DWARFDataExtractor Data(DCtx.getDWARFObj().getRangesSection().Data,
-                          DCtx.isLittleEndian(), AddrSize);
-  uint64_t Offset = 0;
-  DWARFDebugRangeList DwarfRanges;
-
-  while (Data.isValidOffset(Offset)) {
-    DWARFYAML::Ranges YamlRanges;
-    YamlRanges.Offset = Offset;
-    YamlRanges.AddrSize = AddrSize;
-    if (Error E = DwarfRanges.extract(Data, &Offset))
-      return E;
-    for (const auto &RLE : DwarfRanges.getEntries())
-      YamlRanges.Entries.push_back({RLE.StartAddress, RLE.EndAddress});
-    Y.DebugRanges.push_back(std::move(YamlRanges));
-  }
-  return ErrorSuccess();
 }
 
 void dumpPubSection(DWARFContext &DCtx, DWARFYAML::PubSection &Y,
@@ -381,15 +346,12 @@ void dumpDebugLines(DWARFContext &DCtx, DWARFYAML::Data &Y) {
   }
 }
 
-llvm::Error dwarf2yaml(DWARFContext &DCtx, DWARFYAML::Data &Y) {
+std::error_code dwarf2yaml(DWARFContext &DCtx, DWARFYAML::Data &Y) {
   dumpDebugAbbrev(DCtx, Y);
   dumpDebugStrings(DCtx, Y);
-  if (Error E = dumpDebugARanges(DCtx, Y))
-    return E;
-  if (Error E = dumpDebugRanges(DCtx, Y))
-    return E;
+  dumpDebugARanges(DCtx, Y);
   dumpDebugPubSections(DCtx, Y);
   dumpDebugInfo(DCtx, Y);
   dumpDebugLines(DCtx, Y);
-  return ErrorSuccess();
+  return obj2yaml_error::success;
 }

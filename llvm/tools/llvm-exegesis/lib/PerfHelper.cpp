@@ -88,7 +88,7 @@ StringRef PerfEvent::getPfmEventString() const {
 }
 
 #ifdef HAVE_LIBPFM
-Counter::Counter(PerfEvent &&E) : Event(std::move(E)){
+Counter::Counter(const PerfEvent &Event) {
   assert(Event.valid());
   const pid_t Pid = 0;    // measure current process/thread.
   const int Cpu = -1;     // measure any processor.
@@ -122,7 +122,7 @@ int64_t Counter::read() const {
 
 #else
 
-Counter::Counter(PerfEvent &&Event) : Event(std::move(Event)) {}
+Counter::Counter(const PerfEvent &Event) {}
 
 Counter::~Counter() = default;
 

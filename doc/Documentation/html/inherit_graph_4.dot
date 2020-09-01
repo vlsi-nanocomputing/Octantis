@@ -1,0 +1,7 @@
+digraph "Graphical Class Hierarchy"
+{
+  edge [fontname="Helvetica",fontsize="10",labelfontname="Helvetica",labelfontsize="10"];
+  node [fontname="Helvetica",fontsize="10",shape=record];
+  rankdir="LR";
+  Node0 [label="octantis::LiMArray",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$classoctantis_1_1LiMArray.html",tooltip="Class implementing the necessary structures to model the LiM Unit. "];
+}

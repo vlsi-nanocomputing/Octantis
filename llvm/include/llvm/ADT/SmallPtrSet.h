@@ -278,7 +278,7 @@ public:
                                const DebugEpochBase &Epoch)
       : SmallPtrSetIteratorImpl(BP, E), DebugEpochBase::HandleBase(&Epoch) {}
 
-  // Most methods are provided by the base class.
+  // Most methods provided by baseclass.
 
   const PtrTy operator*() const {
     assert(isHandleInSync() && "invalid iterator access!");
@@ -346,8 +346,14 @@ class SmallPtrSetImpl : public SmallPtrSetImplBase {
   using ConstPtrTraits = PointerLikeTypeTraits<ConstPtrType>;
 
 protected:
-  // Forward constructors to the base.
-  using SmallPtrSetImplBase::SmallPtrSetImplBase;
+  // Constructors that forward to the base.
+  SmallPtrSetImpl(const void **SmallStorage, const SmallPtrSetImpl &that)
+      : SmallPtrSetImplBase(SmallStorage, that) {}
+  SmallPtrSetImpl(const void **SmallStorage, unsigned SmallSize,
+                  SmallPtrSetImpl &&that)
+      : SmallPtrSetImplBase(SmallStorage, SmallSize, std::move(that)) {}
+  explicit SmallPtrSetImpl(const void **SmallStorage, unsigned SmallSize)
+      : SmallPtrSetImplBase(SmallStorage, SmallSize) {}
 
 public:
   using iterator = SmallPtrSetIterator<PtrType>;

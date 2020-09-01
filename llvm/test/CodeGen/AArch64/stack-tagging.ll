@@ -33,7 +33,6 @@ entry:
   %x1 = alloca i32, align 4
   %x2 = alloca i8, align 4
   %x3 = alloca i32, i32 11, align 4
-  %x4 = alloca i32, align 4, !stack-safe !0
   call void @use32(i32* %x1)
   call void @use8(i8* %x2)
   call void @use32(i32* %x3)
@@ -50,9 +49,6 @@ entry:
 ; CHECK:  alloca { [11 x i32], [4 x i8] }, align 16
 ; CHECK:  call { [11 x i32], [4 x i8] }* @llvm.aarch64.tagp.{{.*}}({ [11 x i32], [4 x i8] }* {{.*}}, i64 2)
 ; CHECK:  call void @llvm.aarch64.settag(i8* {{.*}}, i64 48)
-; CHECK:  alloca i32, align 4
-; CHECK-NOT: @llvm.aarch64.tagp
-; CHECK-NOT: @llvm.aarch64.settag
 
 ; CHECK:  call void @use32(
 ; CHECK:  call void @use8(
@@ -189,5 +185,3 @@ another_bb:
 ; CHECK: call void @llvm.aarch64.settag(
 ; CHECK: call void @llvm.aarch64.settag(
 ; CHECK: ret void
-
-!0 = !{}

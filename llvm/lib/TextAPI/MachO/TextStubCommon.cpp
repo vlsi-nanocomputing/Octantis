@@ -62,26 +62,17 @@ void ScalarTraits<PlatformSet>::output(const PlatformSet &Values, void *IO,
   case PlatformKind::macOS:
     OS << "macosx";
     break;
-  case PlatformKind::iOSSimulator:
-    LLVM_FALLTHROUGH;
   case PlatformKind::iOS:
     OS << "ios";
     break;
-  case PlatformKind::watchOSSimulator:
-    LLVM_FALLTHROUGH;
   case PlatformKind::watchOS:
     OS << "watchos";
     break;
-  case PlatformKind::tvOSSimulator:
-    LLVM_FALLTHROUGH;
   case PlatformKind::tvOS:
     OS << "tvos";
     break;
   case PlatformKind::bridgeOS:
     OS << "bridgeos";
-    break;
-  case PlatformKind::macCatalyst:
-    OS << "iosmac";
     break;
   }
 }
@@ -221,7 +212,7 @@ StringRef ScalarTraits<UUID>::input(StringRef Scalar, void *, UUID &Value) {
   auto UUID = Split.second.trim();
   if (UUID.empty())
     return "invalid uuid string pair";
-  Value.second = std::string(UUID);
+  Value.second = UUID;
   Value.first = Target{getArchitectureFromName(Arch), PlatformKind::unknown};
   return {};
 }

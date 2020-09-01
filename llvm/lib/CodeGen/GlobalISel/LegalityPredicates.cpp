@@ -126,12 +126,6 @@ LegalityPredicate LegalityPredicates::sizeNotPow2(unsigned TypeIdx) {
   };
 }
 
-LegalityPredicate LegalityPredicates::sizeIs(unsigned TypeIdx, unsigned Size) {
-  return [=](const LegalityQuery &Query) {
-    return Query.Types[TypeIdx].getSizeInBits() == Size;
-  };
-}
-
 LegalityPredicate LegalityPredicates::sameSize(unsigned TypeIdx0,
                                                unsigned TypeIdx1) {
   return [=](const LegalityQuery &Query) {
