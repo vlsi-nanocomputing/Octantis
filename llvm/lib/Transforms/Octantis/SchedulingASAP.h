@@ -22,11 +22,11 @@ using namespace llvm;
 
 namespace octantis {
 
-// Class useful for the implementation of the ASAP Scheduling algorithm
+/// Class useful for the implementation of the ASAP Scheduling algorithm
 class SchedulingASAP
 {
 public:
-    // Recognized instructions
+    /// Recognized instructions
     enum Instr{
         alloc, //Alloca is a keyword
         load,
@@ -36,31 +36,31 @@ public:
         unknown
     };
 
-    //Default constructor
+    ///Default constructor
     SchedulingASAP();
 
-    //Constructor useful to initialize the Instruction Table
+    ///Constructor useful to initialize the Instruction Table
     SchedulingASAP(Instruction &I);
 
-    //Function useful to add a new LLVM IR instruction to the Intruction Table
+    ///Function useful to add a new LLVM IR instruction to the Intruction Table
     void addNewInstruction(Instruction &I);
 
-    //Function useful to increment the value of the scheduling timer
+    ///Function useful to increment the value of the scheduling timer
     void incrementTimer();
 
-    //Function useful to decrement the value of the scheduling timer
+    ///Function useful to decrement the value of the scheduling timer
     void decrementTimer();
 
-    //Function that returns the pointer to the complete Instruction Table
+    ///Function that returns the pointer to the complete Instruction Table
     InstructionTable * getInstructionTable();
 
-    //Function that return the type of the instruction passed
+    ///Function that return the type of the instruction passed
     Instr identifyInstr(Instruction &I);
 
-    //Function to get the actual source register from which execute the load
+    ///Function to get the actual source register from which execute the load
     int * getRealParent(int* &aliasParent);
 
-    //Function to return the pointer to the Instruction Table
+    ///Function to return the pointer to the Instruction Table
     InstructionTable & getIT();
 
 
@@ -77,13 +77,13 @@ public:
 
 private:
 
-    // Variable useful to store the current execution time
+    /// Variable useful to store the current execution time
     int Timer=0;
 
-    // Map for storing the aliases of each loaded register
+    /// Map for storing the aliases of each loaded register
     std::map<int * const, int * const> aliasMap;
 
-    // Iterator over aliases map
+    /// Iterator over aliases map
     std::map<int * const, int * const>::iterator aliasMapIT;
 };
 

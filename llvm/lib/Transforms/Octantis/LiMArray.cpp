@@ -24,8 +24,8 @@ LiMArray::LiMArray()
 
 }
 
-//Function to add a new memory Row inside the array
-//      NOTEs: The type is not essential, its default value should be "norm"
+///Function to add a new memory Row inside the array
+///      NOTEs: The type is not essential, its default value should be "norm"
 void LiMArray::addNewRow(int* const &rowName, std::string &rowType, int &rowLength){
 
     LiMRow tmpRow;
@@ -36,7 +36,7 @@ void LiMArray::addNewRow(int* const &rowName, std::string &rowType, int &rowLeng
 
 }
 
-//Function to add a new LiM Row inside the array
+///Function to add a new LiM Row inside the array
 void LiMArray::addNewLiMRow(int* const &rowName, std::string &rowType, int &rowLength, int* const &src){
 
     LiMRow tmpRow;
@@ -47,8 +47,8 @@ void LiMArray::addNewLiMRow(int* const &rowName, std::string &rowType, int &rowL
     limArray.insert({rowName,tmpRow});
 }
 
-//Function to add a new Row inside the array: partial result row
-//      NOTEs: The "norm" type has to be defined somewhere else
+///Function to add a new Row inside the array: partial result row
+///      NOTEs: The "norm" type has to be defined somewhere else
 void LiMArray::addNewResultRow(int* const &rowName, int &rowLength, int* const &src){
 
     LiMRow tmpRow;
@@ -60,14 +60,14 @@ void LiMArray::addNewResultRow(int* const &rowName, int &rowLength, int* const &
 
 }
 
-//Function to change the type of a LiM row: if a row is just defined as LiM
-//it returns "false" and nothing changes.
+///Function to change the type of a LiM row: if a row is just defined as LiM
+/// it returns "false" and nothing changes.
 bool LiMArray::changeLiMRowType(int* const &rowName, std::string &newRowType){
 
-    //Iterator over LiM Array
+    ///Iterator over LiM Array
     std::map<int * const, LiMRow>::iterator limArrayIntIT=findRow(rowName);
 
-    //Check if the memory row is Lim or not (The iterator is constant)
+    ///Check if the memory row is Lim or not (The iterator is constant)
     if(!checkIfRowIsLiM(limArrayIntIT)){
         limArrayIntIT->second.rowType=(newRowType);
         return true;
@@ -77,16 +77,16 @@ bool LiMArray::changeLiMRowType(int* const &rowName, std::string &newRowType){
 }
 
 
-//Function to check if a memory row is LiM or not
-//  NOTEs: this has to be updated to remove the "norm" lable!
+///Function to check if a memory row is LiM or not
+///  NOTEs: this has to be updated to remove the "norm" lable!
 bool LiMArray::checkIfRowIsLiM(std::map<int * const, LiMArray::LiMRow>::iterator &limArrayItpt){
 
-    //Check if the the Row is type "norm"
+    ///Check if the the Row is type "norm"
     return ((limArrayItpt->second.rowType)!= "norm") ? true : false;
 }
 
 
-//Function to find element inside the limArray
+///Function to find element inside the limArray
 std::map<int * const, LiMArray::LiMRow>::iterator LiMArray::findRow(int* const &rowName){
 
     limArrayIT=limArray.find(rowName);
@@ -105,7 +105,7 @@ std::map<int * const, LiMArray::LiMRow>::iterator LiMArray::findRow(int* const &
 
 }
 
-//Function to add a new input connection to a LiM row if not present
+///Function to add a new input connection to a LiM row if not present
 void LiMArray::addNewInputConnection(int* const &rowName, int* const &srcRowName){
 
     //Iterator over LiM Array
@@ -125,7 +125,7 @@ void LiMArray::addNewInputConnection(int* const &rowName, int* const &srcRowName
 
 }
 
-//Function to know if a memory row has the same type requested
+///Function to know if a memory row has the same type requested
 bool LiMArray::isLiMRowOfThisType(int* const &rowName, std::string &type){
 
     //Iterator over LiM Array
@@ -136,7 +136,7 @@ bool LiMArray::isLiMRowOfThisType(int* const &rowName, std::string &type){
 
 }
 
-//Function to return the dimensions of the LiM Array
+///Function to return the dimensions of the LiM Array
 int LiMArray::getDimensions(){
     return limArray.size();
 }

@@ -16,37 +16,37 @@
 using namespace llvm;
 using namespace octantis;
 
-//Default constructor
+///Default constructor
 InstructionTable::InstructionTable()
 {
 
 }
 
-////Initialization of the instructionList with a Operation
+//Initialization of the instructionList with a Operation
 //InstructionTable::InstructionTable(int * exeTime, int * compTime, std::string * op, int * destReg, int * src1Reg, int * src2Reg)
 //{
 //        AddInstructionToList(exeTime, compTime, op, destReg, src1Reg, src2Reg);
 
 //}
 
-////Initialization of the instructionList with an Allocation
+//Initialization of the instructionList with an Allocation
 //InstructionTable::InstructionTable(int * exeTime, std::string * op, int * destReg, int * src1Reg)
 //{
 //        AddAllocaInstructionToList(exeTime, op, destReg, src1Reg);
 //}
 
-//Function useful to set the iterator to the beginning of the list
+///Function useful to set the iterator to the beginning of the list
 void InstructionTable::InitializeIterator() {
         IListIt = instructionList.begin();
 }
 
-//Function useful to return the current value of the iterator
+///Function useful to return the current value of the iterator
 int InstructionTable::GetIteratorValue() {
     //Test
     return 0;
 }
 
-//Function useful to put a new operation instruction into the instructionList
+///Function useful to put a new operation instruction into the instructionList
 void InstructionTable::AddInstructionToList(int &allocTime, int &lastModifTime, std::string op, int * const destReg,
                                             int * const src1Reg, int * const src2Reg) {
 
@@ -65,7 +65,7 @@ void InstructionTable::AddInstructionToList(int &allocTime, int &lastModifTime, 
         instructionList.push_back(tmpStruct);
 }
 
-//Function useful to put a new operation instruction into the instructionList in a specific position (identified another location "refPos")
+///Function useful to put a new operation instruction into the instructionList in a specific position (identified another location "refPos")
 void InstructionTable::AddInstructionToListAfterRefPos(int* const &refPos, int &allocTime, int &lastModifTime, std::string op,
                                                        int * const destReg, int * const src1Reg, int * const src2Reg){
 
@@ -89,7 +89,7 @@ void InstructionTable::AddInstructionToListAfterRefPos(int* const &refPos, int &
         instructionList.insert(IListIt,tmpStruct);
 }
 
-//Function useful to put a new alloca instruction into the instructionList
+///Function useful to put a new alloca instruction into the instructionList
 void InstructionTable::AddAllocaInstructionToList(int &allocTime, int* const destReg) {
 
         //Temporary structure to link inside the map.
@@ -105,7 +105,7 @@ void InstructionTable::AddAllocaInstructionToList(int &allocTime, int* const des
         allocMap.insert({destReg, tmpStruct});
 }
 
-//Function useful to remove an element from the list
+///Function useful to remove an element from the list
 void InstructionTable::RemoveInstructionFromList(int &position) {
 
         //Check if the position is correct
@@ -120,9 +120,9 @@ void InstructionTable::RemoveInstructionFromList(int &position) {
         }
 }
 
-//Funtion to get the parent of an operand: the location of the allocated
-//data on the stack. It returns a null pointer if the parent has not
-//been modified after the load instruction (RAW conflict).
+///Funtion to get the parent of an operand: the location of the allocated
+///data on the stack. It returns a null pointer if the parent has not
+///been modified after the load instruction (RAW conflict).
 bool InstructionTable::isParentValid(int* const &srcReg){
 
     MapIt=allocMap.find(srcReg);
@@ -138,7 +138,7 @@ bool InstructionTable::isParentValid(int* const &srcReg){
 }
 
 
-//Function to invalidate the information stored inside the parent location
+///Function to invalidate the information stored inside the parent location
 void InstructionTable::invalidateParent(int* const &parent){
 
     MapIt=allocMap.find(parent);
@@ -153,7 +153,7 @@ void InstructionTable::invalidateParent(int* const &parent){
 
 }
 
-//Function to get the time in which the source information is available
+///Function to get the time in which the source information is available
 int InstructionTable::getAvailableTime(int* const &srcReg){
 
     auto entryMatching = getIteratorToElement(srcReg);
@@ -174,7 +174,7 @@ int InstructionTable::getAvailableTime(int* const &srcReg){
 //    }
 }
 
-//Function to get the iterator of a specific entry of the Instruction Table
+///Function to get the iterator of a specific entry of the Instruction Table
 std::list<InstructionTable::instructionData>::iterator InstructionTable::getIteratorToElement(int* const &position){
 
     std::list<InstructionTable::instructionData>::iterator entryMatchingPos;
@@ -202,7 +202,6 @@ void InstructionTable::printIT(){
     int lineCount=0;
 
     errs()<< "-----------------------------DEBUG MODE-----------------------------\n";
-    errs()<< "An error occurred, the state of the Instruction table will be printed:\n\n";
 
     for (IListIt = instructionList.begin(); IListIt != instructionList.end(); ++IListIt)
     {

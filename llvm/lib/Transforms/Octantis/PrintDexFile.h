@@ -30,6 +30,7 @@ using namespace llvm;
 
 namespace octantis{
 
+///Class class useful for the definition of Dexima's configuration file (.dex).
 class PrintDexFile
 {
 public:
@@ -108,38 +109,36 @@ private:
 
 
 private:
-    // Backup variables for the LiM Array and the Operations implemented
+    /// Backup variables for the LiM Array and the Operations implemented
     LiMArray * compArray;
     FiniteStateMachine * compFSM;
 
-    //Iterators over LiMArray and FiniteStateMachine
-    //Iterator over LiM Array
+    ///Iterators over LiMArray and FiniteStateMachine
+    ///Iterator over LiM Array
     std::map<int * const, LiMArray::LiMRow>::iterator limArrayIT;
     std::map<int, std::list<int *>>::iterator FSMIT;
 
-    //Iterator over the list of <int *> of the FSM
+    ///Iterator over the list of <int *> of the FSM
     std::list <int *>::iterator FSM_ListIT;
 
 
-    // Variables useful for the redirection of the output to .dex file
+    /// Variables useful for the redirection of the output to .dex file
     raw_ostream * OStream;
     std::stringstream Output;
 
-    //The following streams are useful to define in parallel all the
-    //sections of the .dex file. At the end, they are merged with Output.
+    ///The following streams are useful to define in parallel all the
+    ///sections of the .dex file. At the end, they are merged with Output.
     std::stringstream OutputLiMMap;
     std::stringstream OutputInstructions;
     std::stringstream OutputCode;
 
 
-    //Map useful to keep track of the name associated to each LiM row:
-    //the name of the first MSB is stored (Here we assume that all the
-    //LiM row contains the same kind of logic)
-    //std::map <int *, std::string> namesMap;
+    ///Map useful to keep track of the name associated to each LiM row:
+    ///the name of the first MSB is stored (Here we assume that all the
+    ///LiM row contains the same kind of logic)
     std::map <int * const, nameAndIndex> namesMap;
 
-    //Iterator over the namesMap
-    //std::map <int *, std::string>::iterator namesMapIT;
+    ///Iterator over the namesMap
     std::map <int * const, nameAndIndex>::iterator namesMapIT;
 
     //Map to keep track of the indexes of each kind of component and its iterator

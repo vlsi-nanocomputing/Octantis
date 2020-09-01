@@ -25,19 +25,19 @@ using namespace llvm;
 using namespace octantis;
 
 
-//Default constructor
+///Default constructor
 SchedulingASAP::SchedulingASAP()
 {
 
 }
 
-//Constructor useful to initialize the Instruction Table
+///Constructor useful to initialize the Instruction Table
 SchedulingASAP::SchedulingASAP(Instruction &I)
 {
     addNewInstruction(I);
 }
 
-//Function useful to add a new LLVM IR instruction to the Intruction Table
+///Function useful to add a new LLVM IR instruction to the Intruction Table
 void SchedulingASAP::addNewInstruction(Instruction &I)
 {
     Instr i=identifyInstr(I);
@@ -114,25 +114,25 @@ void SchedulingASAP::addNewInstruction(Instruction &I)
     }
 }
 
-//Function useful to increment the value of the scheduling timer
+///Function useful to increment the value of the scheduling timer
 void SchedulingASAP::incrementTimer()
 {
     Timer+=1;
 }
 
-//Function useful to decrement the value of the scheduling timer
+///Function useful to decrement the value of the scheduling timer
 void SchedulingASAP::decrementTimer()
 {
     Timer-=1;
 }
 
-//Function that returns the pointer to the complete Instruction Table
+///Function that returns the pointer to the complete Instruction Table
 InstructionTable * SchedulingASAP::getInstructionTable()
 {
     return (&IT);
 }
 
-//Function that return the type of the instruction passed
+///Function that return the type of the instruction passed
 SchedulingASAP::Instr SchedulingASAP::identifyInstr(Instruction &I){
 
     //Identification of the kind of instruction (see Instruction.def)
@@ -157,7 +157,7 @@ SchedulingASAP::Instr SchedulingASAP::identifyInstr(Instruction &I){
     return unknown;
 }
 
-//Function to get the actual source register from which execute the load
+///Function to get the actual source register from which execute the load
 int * SchedulingASAP::getRealParent(int* &aliasParent){
     aliasMapIT = aliasMap.find(aliasParent);
     if (aliasMapIT!=aliasMap.end())
@@ -171,7 +171,7 @@ int * SchedulingASAP::getRealParent(int* &aliasParent){
     }
 }
 
-//Function to return the pointer to the Instruction Table
+///Function to return the pointer to the Instruction Table
 InstructionTable & SchedulingASAP::getIT(){
     IT.printIT();
     return IT;

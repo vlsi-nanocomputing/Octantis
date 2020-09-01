@@ -19,7 +19,7 @@ FiniteStateMachine::FiniteStateMachine()
     time=0;
 }
 
-//Function to allocate a new operation in a precise time
+///Function to allocate a new operation in a precise time
 void FiniteStateMachine::addNewInstruction(int &time, int* const& operand){
 
     FSMIt=FSM.find(time);
@@ -36,7 +36,7 @@ void FiniteStateMachine::addNewInstruction(int &time, int* const& operand){
 
 }
 
-//Function to get the size of the FSM
+///Function to get the size of the FSM
 int FiniteStateMachine::getFSMSize(){
     return FSM.size();
 }

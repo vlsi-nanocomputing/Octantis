@@ -1,7 +1,7 @@
 /*-------------------------------------- The Octantis Project --------------------------------------*/
-//
-// OctantisPass Pass: backend pass for the generation of Dexima's configuration files.
-//
+/// \file
+/// OctantisPass Pass: backend pass for the generation of Dexima's configuration files.
+///
 /*-------------------------------------------- Licence ---------------------------------------------*/
 //
 // © Andrea Marchesin 2020 (andrea.marchesin@studenti.polito.it) for Politecnico di Torino

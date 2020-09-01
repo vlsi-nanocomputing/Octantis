@@ -1,7 +1,7 @@
 /*-------------------------------------- The Octantis Project --------------------------------------*/
-//
-// Operations Implemented Include File: it includes all the macto-operations recognized by DExIMA
-//
+/// \file
+/// Operations Implemented Include File: it includes all the macto-operations recognized by DExIMA
+///
 /*-------------------------------------------- Licence ---------------------------------------------*/
 //
 // © Andrea Marchesin 2020 (andrea.marchesin@studenti.polito.it) for Politecnico di Torino

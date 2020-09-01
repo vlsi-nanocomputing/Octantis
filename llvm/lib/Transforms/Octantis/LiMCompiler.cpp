@@ -19,8 +19,8 @@
 using namespace llvm;
 using namespace octantis;
 
-//Default constructor: it initializes the pointer to IT and the constant variable zeroAddr
-//      NOTEs: To verify the correct content of the zeroAddr variable.
+///Default constructor: it initializes the pointer to IT and the constant variable zeroAddr
+///      NOTEs: To verify the correct content of the zeroAddr variable.
 LiMCompiler::LiMCompiler(InstructionTable & ptrIT):zeroAddr(((ptrIT.instructionList).begin())->destinationReg){
 
     ptrInstrList = &(ptrIT.instructionList);
