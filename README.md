@@ -1,15 +1,16 @@
-#The Octantis Project
-##An High-Level Explorer for Logic-in-Memory architectures.
+# The Octantis Project
+## An High-Level Explorer for Logic-in-Memory architectures.
 
-*-------------------------------------------- Licence ---------------------------------------------*
-** © Andrea Marchesin 2020 (andrea.marchesin@studenti.polito.it) for Politecnico di Torino**
-*--------------------------------------------------------------------------------------------------*
+* -------------------------------------------- Licence --------------------------------------------- *
+** © Andrea Marchesin 2020 (andrea.marchesin@studenti.polito.it) for Politecnico di Torino **
+* -------------------------------------------------------------------------------------------------- *
 
 -----------------------------------------------------------------------------------------------------
 Instructions for the compilation of the project - Warning: It may require many Gb of free memory!
 -----------------------------------------------------------------------------------------------------
- -Create a "build" folder, outside the Git repository
- -Enter the newly created folder and execute the following commands:
+ 
+1. Create a "build" folder, outside the Git repository
+2. Enter the newly created folder and execute the following commands:
     ```
     cmake -G 'Unix Makefiles' ../The-Octantis-project/llvm -DLLVM_USE_LINKER=gold -DCMAKE_BUILD_TYPE=Release
     make
