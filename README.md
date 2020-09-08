@@ -22,5 +22,5 @@ Instructions for the compilation of the project - Warning: It may require many G
 
 -----------------------------------------------------------------------------------------------------
 
-After the building of the project, all the passes developed can be tested. More detail will be released
+After the building of the project, all the passes developed can be tested. More details will be released
 in the future version of the project.
