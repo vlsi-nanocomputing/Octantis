@@ -53,6 +53,10 @@ public:
     /// instruction is performed copying the allocated data into a new SSA register.
     void AddAllocaInstructionToList(int &allocTime, int* const destReg);
 
+    ///Function to change the kind of operation of an instruction and
+    /// change the destination register of an operation
+    void ChangeOperatorAndDestReg(int * const srcLocation, std::string newOperator, int * const newSrcLocation);
+
     ///Function useful to remove an element from the list
     void RemoveInstructionFromList(int &position);
 

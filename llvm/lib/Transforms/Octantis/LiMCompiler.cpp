@@ -83,7 +83,7 @@ LiMCompiler::LiMCompiler(InstructionTable & ptrIT):zeroAddr(((ptrIT.instructionL
                 //whose type is defined by the operation that has to be performed.
 
                 //Add new input connection for sourceReg1
-                errs() << "Change LiM row performed!\n";
+                errs() << "\tChange LiM row performed!\n";
                 MemArray.addNewInputConnection(instrListIT->sourceReg2, instrListIT->sourceReg1);
 
                 //Update the available source register with the corresponding LiM structure (LIFO approach)
@@ -91,7 +91,7 @@ LiMCompiler::LiMCompiler(InstructionTable & ptrIT):zeroAddr(((ptrIT.instructionL
 
             } else if(MemArray.changeLiMRowType(instrListIT->sourceReg1, instrListIT->operation)){
                 //Add new input connection for sourceReg1
-                errs() << "Change LiM row performed!\n";
+                errs() << "\tChange LiM row performed!\n";
                 MemArray.addNewInputConnection(instrListIT->sourceReg1, instrListIT->sourceReg2);
 
                 //Update the available source register with the corresponding LiM structure (LIFO approach)
@@ -163,7 +163,7 @@ LiMCompiler::LiMCompiler(InstructionTable & ptrIT):zeroAddr(((ptrIT.instructionL
 
 void LiMCompiler::printLiMArray(){
 
-    errs()<<"The program has defined the LiMArray. In the following the structure of the"
+    errs()<<"\n\nThe program has defined the LiMArray. In the following the structure of the"
             " map will be printed:\n\n";
     MemArray.printLiMArray();
     errs()<<"\nEnd of the content of the LiM Array.\n\n";

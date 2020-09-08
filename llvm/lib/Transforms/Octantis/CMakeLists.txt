@@ -7,6 +7,7 @@ add_llvm_library( LLVMOctantis MODULE BUILDTREE_ONLY
   SchedulingASAP.cpp
   LiMArray.cpp
   FiniteStateMachine.cpp
+  AdditionalLogicPorts.cpp
   LiMCompiler.cpp
   PrintDexFile.cpp
   OctantisPass.cpp

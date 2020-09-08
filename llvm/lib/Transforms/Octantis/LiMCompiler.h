@@ -10,8 +10,6 @@
 #ifndef LIMCOMPILER_H
 #define LIMCOMPILER_H
 
-#include "OperationsImplemented.h"
-
 //Octantis Include Files
 #include "InstructionTable.h"
 #include "LiMArray.h"

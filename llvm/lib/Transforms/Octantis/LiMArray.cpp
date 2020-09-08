@@ -117,10 +117,10 @@ void LiMArray::addNewInputConnection(int* const &rowName, int* const &srcRowName
     //Add the new input connection
     if((*connectionsList).size()==0 || find((*connectionsList).begin(), (*connectionsList).end(),
                                           srcRowName) != (*connectionsList).end()){
-        errs() << "\taddNewInputConnection: source not found!\n";
+        //errs() << "\taddNewInputConnection: source not found!\n";
         (*connectionsList).push_back(srcRowName);
     } else {
-        errs() << "\taddNewInputConnection: source found!\n";
+        //errs() << "\taddNewInputConnection: source found!\n";
     }
 
 }

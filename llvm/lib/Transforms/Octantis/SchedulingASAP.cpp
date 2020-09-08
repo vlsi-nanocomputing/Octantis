@@ -82,17 +82,25 @@ void SchedulingASAP::addNewInstruction(Instruction &I)
     {
         errs() << "Binary detected!\n";
 
-        //Define the minimum time in which schedule the operation
-        //(i.e. when all the operands are ready)
-        int Top1=IT.getAvailableTime((int *)I.getOperand(0));
-        int Top2=IT.getAvailableTime((int *)I.getOperand(1));
+        //Check if the input function is a NOT
+        if(isThisNot(I)){
+            errs() << "\tNOT instruction detected!\n";
+            changeParentInNOT((int *)I.getOperand(0),I.getOpcodeName(),(int *) &I);
 
-        int Tex=std::max(Top1,Top2);
+        } else {
 
-        //The result will be written at the next clock cycle
-        Tex++;
+                //Define the minimum time in which schedule the operation
+                //(i.e. when all the operands are ready)
+                int Top1=IT.getAvailableTime((int *)I.getOperand(0));
+                int Top2=IT.getAvailableTime((int *)I.getOperand(1));
 
-        IT.AddInstructionToList(Tex, Tex, I.getOpcodeName(), (int *) &I, (int *)I.getOperand(0), (int *)I.getOperand(1));
+                int Tex=std::max(Top1,Top2);
+
+                //The result will be written at the next clock cycle
+                Tex++;
+
+                IT.AddInstructionToList(Tex, Tex, I.getOpcodeName(), (int *) &I, (int *)I.getOperand(0), (int *)I.getOperand(1));
+        }
 
     }
         break;
@@ -155,6 +163,47 @@ SchedulingASAP::Instr SchedulingASAP::identifyInstr(Instruction &I){
 
     //Not valid instruction
     return unknown;
+}
+
+///Function to identify the not instruction
+bool SchedulingASAP::isThisNot(Instruction &I){
+    std::string logicPort;
+    int operand;
+
+    logicPort=I.getOpcodeName();
+
+    //Chech if the second operand is an integer value
+    if(ConstantInt* CI=dyn_cast<ConstantInt>(I.getOperand(1))){
+
+        //Converting the operand into an integer value (operand)
+        if (CI->getBitWidth() <= 32) {
+            operand = CI->getSExtValue();
+
+            if(logicPort=="xor"&&operand==-1)
+            {
+                errs() << "The logic port is a NOT!\n";
+                return true;
+            }
+          }
+    }
+
+    //Case in which the second operand is not a -1
+    errs() << "The logic port is not a NOT!\n";
+    return false;
+
+
+}
+
+///Fuction to change the parent type in negative logic and to update the correct destReg
+void SchedulingASAP::changeParentInNOT(int* const parentName, std::string operation, int* const newParentName){
+
+    //Get the name of the negative logic corresponding to operation
+    std::string negativeOperator=changeLogic.getNegativeLogic(operation);
+
+    errs()<< "The negative operator for " << operation << " is: " <<negativeOperator;
+
+    //Change the operator inside the Instruction Table
+    IT.ChangeOperatorAndDestReg(parentName,negativeOperator,newParentName);
 }
 
 ///Function to get the actual source register from which execute the load

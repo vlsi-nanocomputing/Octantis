@@ -105,6 +105,43 @@ void InstructionTable::AddAllocaInstructionToList(int &allocTime, int* const des
         allocMap.insert({destReg, tmpStruct});
 }
 
+///Function to change the kind of operation of an instruction and
+/// change the destination register of an operation
+void InstructionTable::ChangeOperatorAndDestReg(int * const srcLocation, std::string newOperator, int * const newSrcLocation){
+
+    std::list<instructionData>::iterator internalIT;
+
+    //Typically the instruction is modified immediately after its introduction
+    internalIT=instructionList.end();
+    --internalIT;
+
+    if((internalIT->destinationReg)==srcLocation)
+    {
+
+        (internalIT->operation)=newOperator;
+        (internalIT->destinationReg)=newSrcLocation;
+
+    } else {
+        //Advanced research of the corret location
+        for(internalIT=instructionList.begin();internalIT!=instructionList.end();++internalIT)
+        {
+            if((internalIT->destinationReg)==srcLocation)
+            {
+                (internalIT->operation)=newOperator;
+                (internalIT->destinationReg)=newSrcLocation;
+                break;
+            }
+        }
+        if(internalIT==instructionList.end())
+        {
+            //An error occurred
+            llvm_unreachable("Error in finding an instruction inside the InstructionList.\n");
+        }
+
+    }
+}
+
+
 ///Function useful to remove an element from the list
 void InstructionTable::RemoveInstructionFromList(int &position) {
 

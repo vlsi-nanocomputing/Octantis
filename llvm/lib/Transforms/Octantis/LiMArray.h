@@ -16,6 +16,7 @@
 #include <string>
 
 namespace octantis{
+
 ///Class implementing the necessary structures to model the LiM Unit
 class LiMArray
 {

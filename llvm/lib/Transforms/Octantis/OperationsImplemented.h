@@ -28,6 +28,8 @@ const std::map<std::string, std::string> LimOperations = {
     {"and", "bitwise"},
     {"nand", "bitwise"},
     {"or", "bitwise"},
+    {"nor", "bitwise"},
+    {"xnor", "bitwise"},
     {"xor", "bitwise"}
 };
 

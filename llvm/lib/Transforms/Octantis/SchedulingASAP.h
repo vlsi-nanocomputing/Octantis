@@ -13,10 +13,12 @@
 #include "llvm/IR/Function.h"
 
 #include "InstructionTable.h"
+#include "AdditionalLogicPorts.h"
 //#include "Allocator.h" //The allocator will introduce constraints considering the config. files
 
 #include <map>
 #include <iterator>
+#include <string>
 
 using namespace llvm;
 
@@ -69,6 +71,19 @@ public:
     void printAliasMap();
 
 /*--------------------------END DEBUG FUNCTIONS------------------------------*/
+
+private:
+    ///Function to identify the not instruction
+    bool isThisNot(Instruction &I);
+
+    ///Fuction to change the parent type in negative logic and to update the correct destReg
+    void changeParentInNOT(int * const parentName, std::string operation, int * const newParentName);
+
+private:
+    ///Object useful for defining the modified version of a
+    /// specific logic operator
+    AdditionalLogicPorts changeLogic;
+
 
 
 public:
