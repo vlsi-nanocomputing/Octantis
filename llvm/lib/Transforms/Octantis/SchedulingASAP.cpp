@@ -48,16 +48,51 @@ void SchedulingASAP::addNewInstruction(Instruction &I)
     {
     case alloc:
     {
+        //Number of allocated data (e.g. INT=1, VECTOR=N)
+        int arraySize=1;
+
         errs() << "Alloca detected!\n";
-        IT.AddAllocaInstructionToList(Timer, (int *) &I);
+        AllocaInst *a=dyn_cast<AllocaInst>(&I);
+        Type *ty=(a->getAllocatedType());
+
+       if(ty->isArrayTy())
+       {
+           errs()<< "\tArray detected!\n";
+           arraySize= (int) ty->getArrayNumElements();
+           errs()<< "\tDimension: "<< arraySize << "\n";
+       }
+
+        IT.AddAllocaInstructionToList(Timer, (int *) &I, arraySize);
     }
         break;
 
     case load:
     {
         errs() << "Load detected!\n";
-        int * parentReg = (int *) I.getOperand(0);
-        if (!IT.isParentValid(parentReg)){
+
+        int * parentReg;
+        int index=0; //Default value for traditional load instructions (no array)
+
+        //Check if the parsed instruction refers to an array
+        if(infoAboutPtr.valid==true)
+        {
+            //Check if the assumption is correct
+            if(infoAboutPtr.ptrName==(int *) I.getOperand(0))
+            {
+                errs() << "\tCheck on the index is correct!\n";
+                //The element derives from an array
+                parentReg=infoAboutPtr.srcReg;
+                index=infoAboutPtr.index;
+                infoAboutPtr.valid=false;
+            } else {
+                llvm_unreachable("Error in SchedulingASAP: load instruction after GEP refers to an unknown pointer.");
+            }
+
+        } else {
+            parentReg = (int *) I.getOperand(0);
+        }
+
+        if (!IT.isParentValid(parentReg,index)){
             parentReg = getRealParent(parentReg);
         }
 
@@ -70,8 +105,32 @@ void SchedulingASAP::addNewInstruction(Instruction &I)
     {
         errs() << "Store detected!\n";
 
+        int * destReg;
+        int index=0; //Default value for traditional load instructions (no array)
+
+        //Check if the parsed instruction refers to an array
+        if(infoAboutPtr.valid==true)
+        {
+            //Check if the assumption is correct
+            if(infoAboutPtr.ptrName==(int *) I.getOperand(0))
+            {
+                //The element derives from an array
+                destReg=infoAboutPtr.srcReg;
+                index=infoAboutPtr.index;
+                infoAboutPtr.valid=false;
+            } else {
+                llvm_unreachable("Error in SchedulingASAP: store instruction after GEP refers to an unknown pointer.");
+            }
+
+        } else {
+            destReg=(int *)I.getOperand(1);
+        }
+
+
         //Invalidate the data previously declared through 'alloca' statement
-        IT.invalidateParent((int *)I.getOperand(1));
+        IT.invalidateParent(destReg,index);
+
+        //Update the alias map!!!!
 
         //Set the relation between the newest data and the invalid one
         aliasMap.insert(std::pair<int * const, int * const>((int *)I.getOperand(1), (int *)I.getOperand(0))); //Check the order
@@ -102,6 +161,33 @@ void SchedulingASAP::addNewInstruction(Instruction &I)
                 IT.AddInstructionToList(Tex, Tex, I.getOpcodeName(), (int *) &I, (int *)I.getOperand(0), (int *)I.getOperand(1));
         }
 
+    }
+        break;
+
+    case ptr:
+    {
+        errs() << "Pointer detected!\n";
+
+        int index;
+
+        //To identify the kind of pointer: array
+        GetElementPtrInst *GEP = dyn_cast<GetElementPtrInst>(&I);
+        if (!GEP){
+           // The instruction doesn't represent a pointer to an array
+           llvm_unreachable("SchedulingASAP error: current instruction not recognized.\n");
+        }
+
+        //Get the index
+        Value *offset = GEP->getOperand(2);
+        ConstantInt* CI = dyn_cast<ConstantInt>(offset);
+
+        index=CI->getSExtValue();
+
+        // Set the useful information for the following input instruction
+        infoAboutPtr.ptrName=(int *)&I;
+        infoAboutPtr.srcReg=(int *) GEP->getPointerOperand();
+        infoAboutPtr.index=index;
+        infoAboutPtr.valid=true;
     }
         break;
 
@@ -160,6 +246,9 @@ SchedulingASAP::Instr SchedulingASAP::identifyInstr(Instruction &I){
 
     if(isa <ReturnInst> (I))
         return ret;
+
+    if(isa<GetElementPtrInst>(I))
+        return ptr;
 
     //Not valid instruction
     return unknown;

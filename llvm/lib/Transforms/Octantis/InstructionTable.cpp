@@ -90,13 +90,20 @@ void InstructionTable::AddInstructionToListAfterRefPos(int* const &refPos, int &
 }
 
 ///Function useful to put a new alloca instruction into the instructionList
-void InstructionTable::AddAllocaInstructionToList(int &allocTime, int* const destReg) {
+void InstructionTable::AddAllocaInstructionToList(int &allocTime, int* const destReg, int &arrayDim) {
+
+        //Temporary vector to store the validity bit
+        std::vector<bool> tmpValidityVector;
+
+        for(int i=0; i<arrayDim;++i)
+            tmpValidityVector.push_back(true); //valid - Initialization Value
+
 
         //Temporary structure to link inside the map.
         //Validity bit initialized to 'true'
         allocatedData tmpStruct = {
             allocTime, //allocTime
-            true //valid - Initialization Value
+            tmpValidityVector
         };
 
        // errs() << "Data in the structure: " << tmpStruct.executionTime << " " << tmpStruct.operation << " " << tmpStruct.destinationReg << " " << tmpStruct.sourceReg1 << "\n";
@@ -160,12 +167,12 @@ void InstructionTable::RemoveInstructionFromList(int &position) {
 ///Funtion to get the parent of an operand: the location of the allocated
 ///data on the stack. It returns a null pointer if the parent has not
 ///been modified after the load instruction (RAW conflict).
-bool InstructionTable::isParentValid(int* const &srcReg){
+bool InstructionTable::isParentValid(int* const &srcReg, int &index){
 
     MapIt=allocMap.find(srcReg);
     if (MapIt != allocMap.end())
     {
-        return (allocMap[srcReg].valid ) ? true : false;
+        return ((allocMap[srcReg]).valid[index]) ? true : false;
     } else {
         //An error occurred: the parent register, the allocated one, is not present in IT
         llvm_unreachable("InstructionTable error: current instruction refers to a source register not present"
@@ -176,12 +183,12 @@ bool InstructionTable::isParentValid(int* const &srcReg){
 
 
 ///Function to invalidate the information stored inside the parent location
-void InstructionTable::invalidateParent(int* const &parent){
+void InstructionTable::invalidateParent(int* const &parent, int &index){
 
     MapIt=allocMap.find(parent);
     if (MapIt != allocMap.end())
     {
-        allocMap[parent].valid=false;
+        allocMap[parent].valid[index]=false;
     } else {
         //An error occurred: the parent register, the allocated one, is not present in IT
         llvm_unreachable("InstructionTable error: current instruction refers to a source register not present"
@@ -261,6 +268,7 @@ void InstructionTable::printIT(){
 void InstructionTable::printAllocData(){
 
     int lineCount=0;
+    int validCount=0;
 
     errs()<< "An error occurred, the state of the Allocated Data Map will be printed:\n\n";
 
@@ -269,8 +277,13 @@ void InstructionTable::printAllocData(){
         errs()<< "\t\t Line " << lineCount << ": ";
         errs()<< "allocReg: " << MapIt->first << ", ";
         errs()<< "allocTime: " << MapIt->second.allocTime << ", ";
-        errs()<< "validityBit: " << MapIt->second.valid << "\n";
+        for (auto i = (MapIt->second.valid).begin(); i != (MapIt->second.valid).end(); ++i)
+        {
+            errs()<< "validityBit" << validCount << ": " << *i << "\n";
+            ++validCount;
+        }
 
+        validCount=0;
         lineCount++;
     }
 

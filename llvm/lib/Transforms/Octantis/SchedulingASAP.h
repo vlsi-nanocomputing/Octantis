@@ -35,6 +35,7 @@ public:
         store,
         binary,
         ret,
+        ptr,
         unknown
     };
 
@@ -84,6 +85,15 @@ private:
     /// specific logic operator
     AdditionalLogicPorts changeLogic;
 
+private:
+    /// Structure useful to store tmp informations
+    /// about the index of the array parsed
+    struct indexStruct{
+        int * ptrName;
+        int * srcReg;
+        int index;
+        bool valid=false; //A getElementPtr instruction is parsed
+    } infoAboutPtr;
 
 
 public:
@@ -100,6 +110,14 @@ private:
 
     /// Iterator over aliases map
     std::map<int * const, int * const>::iterator aliasMapIT;
+
+    /// Map for storing the temporary index for accessing
+    /// an array
+    //std::map<int * const, int> arrayIndexList;
+
+    /// Iterator over arrayIndexList
+    //std::map<int * const, int>::iterator arrayIndexListIT;
+
 };
 
 } //End of Octantis' namespace

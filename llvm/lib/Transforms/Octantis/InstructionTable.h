@@ -14,6 +14,7 @@
 #include <string>
 #include <list>
 #include <map>
+#include <vector>
 #include <cstdlib>
 
 #include "llvm/Support/raw_ostream.h"
@@ -51,7 +52,7 @@ public:
     ///Function useful to put a new alloca instruction into the instructionList.
     ///Here the src1Reg is the name of the Alias of the allocated data: the load
     /// instruction is performed copying the allocated data into a new SSA register.
-    void AddAllocaInstructionToList(int &allocTime, int* const destReg);
+    void AddAllocaInstructionToList(int &allocTime, int* const destReg, int &arrayDim);
 
     ///Function to change the kind of operation of an instruction and
     /// change the destination register of an operation
@@ -62,10 +63,10 @@ public:
 
     ///Funtion to get the parent of an operand: the location of the allocated
     /// data on the stack.
-    bool isParentValid(int* const &srcReg);
+    bool isParentValid(int* const &srcReg, int &index);
 
     ///Function to invalidate the information stored inside the parent location
-    void invalidateParent(int* const &parent);
+    void invalidateParent(int* const &parent, int &index);
 
     ///Function to get the time in which the source information is available
     int getAvailableTime(int* const &srcReg);
@@ -97,7 +98,8 @@ public:
     /// been modified.
     struct allocatedData{
         int allocTime;
-        bool valid;
+        std::vector<bool> valid;
+        //bool valid;
     };
 
 
