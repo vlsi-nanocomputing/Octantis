@@ -26,6 +26,9 @@
 #include <iterator>
 #include <set>
 
+//For debug purposes
+#include <fstream>
+
 using namespace llvm;
 
 namespace octantis{
@@ -34,8 +37,11 @@ namespace octantis{
 class PrintDexFile
 {
 public:
-    PrintDexFile(LiMArray *compArray, FiniteStateMachine *compFSM, raw_ostream *OStream):
-        compArray(compArray), compFSM(compFSM), OStream(OStream){};
+//    PrintDexFile(LiMArray *compArray, FiniteStateMachine *compFSM, raw_ostream *OStream):
+//        compArray(compArray), compFSM(compFSM), OStream(OStream){};
+
+    PrintDexFile(LiMArray *compArray, FiniteStateMachine *compFSM):
+        compArray(compArray), compFSM(compFSM){};
 
     /// It prints the .dex file
     void print();
@@ -82,6 +88,9 @@ private:
     /// It prints the correct code for an SUM lim cell
     void printADD(int &currentRow, int* const &nameRow, int* const &nameSrc);
 
+    /// It prints the correct code for any MIXED lim cell
+    void printMIXED(int &currentRow, int * const &nameRow, int* const &nameSrc, std::list<std::string> &operators);
+
     /// It prints the correct code for any BITWISE lim cell with a 2to1 mux in input
     /// so that 2 input bits for the logic are available.
     void printBITWISEMux2to1(std::string &bitwiseOp, int &currentRow, int* const &nameRow, int* const &nameSrc1, int* const &nameSrc2);
@@ -89,6 +98,10 @@ private:
     /// It prints the correct code for an SUM lim cell with a 2to1 mux in input
     /// so that 2 input bits for the logic are available.
     void printADDMux2to1(int &currentRow, int* const &nameRow, int* const &nameSrc1, int* const &nameSrc2);
+
+    /// It prints the correct code for any MIXED lim cell with a 2to1 mux in input
+    void printMIXEDMux2to1(int &currentRow, int * const &nameRow, int* const &nameSrc1, int* const &nameSrc2,
+                           std::list<std::string> &operators);
 
     /// It prints the correct code for an SUB lim cell
 //    void printSUB(int * currentRow, int **nameRow, int **nameSrc);
@@ -105,9 +118,6 @@ private:
     /// of the row in case of is an Arithmetic Operation.
     void getOutPinName(std::string &opSrc, std::string &outPinName);
 
-
-
-
 private:
     /// Backup variables for the LiM Array and the Operations implemented
     LiMArray * compArray;
@@ -123,14 +133,19 @@ private:
 
 
     /// Variables useful for the redirection of the output to .dex file
-    raw_ostream * OStream;
-    std::stringstream Output;
+    ///     (NOTE: To implement the raw_ostream!)
+//      raw_ostream & OStream;
+//      raw_ostream & Output;
+        std::fstream Output;
+
 
     ///The following streams are useful to define in parallel all the
     ///sections of the .dex file. At the end, they are merged with Output.
-    std::stringstream OutputLiMMap;
-    std::stringstream OutputInstructions;
-    std::stringstream OutputCode;
+    ///     (NOTE: To implement the raw_ostream!)
+        std::fstream OutputLiMMap;
+//        raw_ostream & OutputLiMMap;
+//        raw_ostream & OutputInstructions;
+//        raw_ostream & OutputCode;
 
 
     ///Map useful to keep track of the name associated to each LiM row:

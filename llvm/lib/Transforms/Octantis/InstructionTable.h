@@ -45,6 +45,10 @@ public:
     ///Function useful to put a new operation instruction into the instructionList
     void AddInstructionToList(int &allocTime, int &lastModifTime, std::string op, int* const destReg, int* const src1Reg, int * const src2Reg);
 
+    ///Function useful to put a new switch operation into the instructionList
+    void AddSwitchInstructionToList(int &allocTime, int &lastModifTime, std::string op, std::list<std::string> &switchList,
+                                    int* const destReg, int* const src1Reg, int * const src2Reg);
+
     ///Function useful to put a new operation instruction into the instructionList in a specific position (identified another location "refPos")
     void AddInstructionToListAfterRefPos(int* const &refPos, int &allocTime, int &lastModifTime, std::string op, int* const destReg,
                                          int* const src1Reg, int* const src2Reg);
@@ -59,7 +63,10 @@ public:
     void ChangeOperatorAndDestReg(int * const srcLocation, std::string newOperator, int * const newSrcLocation);
 
     ///Function useful to remove an element from the list
-    void RemoveInstructionFromList(int &position);
+    void RemoveInstructionFromList(int * const &rowName);
+
+    ///Funtion useful to add a new control signal to the list
+    void addControlSignal(int * &controlSig);
 
     ///Funtion to get the parent of an operand: the location of the allocated
     /// data on the stack.
@@ -88,6 +95,7 @@ public:
         int lastModifTime;
         int lastReadTime;
         std::string operation;
+        std::list<std::string> specifications; //Useful for switch cases
         int * destinationReg;
         int * sourceReg1;
         int * sourceReg2;
@@ -110,10 +118,15 @@ public:
 //This has to be transformed into protected!
 public:
     ///List containing all the instructions that have to be scheduled
+    ///     (NOTE: the structure has to be updated into a MAP)
     std::list<instructionData> instructionList;
 
     ///Map containing the info about the alloc data
     std::map<int * const, allocatedData> allocMap;
+
+    ///List containing all the control signals
+    ///     (NOTE: they are stored but not implemented!)
+    std::list<int *> controlSignals;
 
 private:
     ///Iterator to access the list

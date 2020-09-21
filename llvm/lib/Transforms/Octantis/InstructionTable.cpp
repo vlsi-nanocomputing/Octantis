@@ -50,12 +50,15 @@ int InstructionTable::GetIteratorValue() {
 void InstructionTable::AddInstructionToList(int &allocTime, int &lastModifTime, std::string op, int * const destReg,
                                             int * const src1Reg, int * const src2Reg) {
 
+        //Temporary empty list
+        std::list<std::string> tmpEmptyList;
         //Temporary structure to link inside the list
         instructionData tmpStruct = {
             allocTime, //allocTime
             lastModifTime, //lastModifTime
             lastModifTime, //lastReadTime
             op, //operation
+            tmpEmptyList, //No switch operation
             destReg, //destinationReg
             src1Reg, //sourceReg1
             src2Reg //sourceReg2
@@ -65,16 +68,42 @@ void InstructionTable::AddInstructionToList(int &allocTime, int &lastModifTime, 
         instructionList.push_back(tmpStruct);
 }
 
+///Function useful to put a new switch operation into the instructionList
+void InstructionTable::AddSwitchInstructionToList(int &allocTime, int &lastModifTime, std::string op,
+                                                  std::list<std::string> &switchList, int* const destReg, int* const src1Reg, int * const src2Reg){
+
+    //Temporary structure to link inside the list
+    instructionData tmpStruct = {
+        allocTime, //allocTime
+        lastModifTime, //lastModifTime
+        lastModifTime, //lastReadTime
+        op, //operation
+        switchList, //Switch operators
+        destReg, //destinationReg
+        src1Reg, //sourceReg1
+        src2Reg //sourceReg2
+    };
+
+    //Push the new line inside the Instruction Table
+    instructionList.push_back(tmpStruct);
+
+
+
+}
+
 ///Function useful to put a new operation instruction into the instructionList in a specific position (identified another location "refPos")
 void InstructionTable::AddInstructionToListAfterRefPos(int* const &refPos, int &allocTime, int &lastModifTime, std::string op,
                                                        int * const destReg, int * const src1Reg, int * const src2Reg){
 
+        //Temporary empty list
+        std::list<std::string> tmpEmptyList;
         //Temporary structure to link inside the list
         instructionData tmpStruct = {
             allocTime, //allocTime
             lastModifTime, //lastModifTime
             lastModifTime, //lastReadTime
             op, //operation
+            tmpEmptyList,
             destReg, //destinationReg
             src1Reg, //sourceReg1
             src2Reg //sourceReg2
@@ -150,18 +179,26 @@ void InstructionTable::ChangeOperatorAndDestReg(int * const srcLocation, std::st
 
 
 ///Function useful to remove an element from the list
-void InstructionTable::RemoveInstructionFromList(int &position) {
+void InstructionTable::RemoveInstructionFromList(int * const &rowName) {
 
-        //Check if the position is correct
-        if (true/* *position < instructionList.size()*/) {
-                InitializeIterator();
-                std::advance(IListIt,position);
-                IListIt=instructionList.erase(IListIt);
-        }
-        else {
-                //An error occurred
-                llvm_unreachable("Error in removing instructions inside the InstructionList.\n");
-        }
+    //Check if the source row exists
+    std::list<instructionData>::iterator internalIT;
+
+    internalIT=getIteratorToElement(rowName);
+
+    if(internalIT!=instructionList.end())
+    {
+        instructionList.erase(internalIT);
+
+    } else {
+        //An error occurred
+        llvm_unreachable("Error in InstructionTable: the row that has to be deleted does not exist!");
+    }
+}
+
+///Funtion useful to add a new control signal to the list
+void InstructionTable::addControlSignal(int* & controlSig){
+    controlSignals.push_back(controlSig);
 }
 
 ///Funtion to get the parent of an operand: the location of the allocated
@@ -253,7 +290,13 @@ void InstructionTable::printIT(){
         errs()<< IListIt->allocTime << " ";
         errs()<< IListIt->lastModifTime << " ";
         errs()<< IListIt->lastReadTime << " ";
-        errs()<< IListIt->operation << " ";
+        errs()<< IListIt->operation;
+        errs()<< "; Associated operators: ";
+        if(!(IListIt->specifications).empty()){
+            errs() << "NOT EMPTY. ";
+        } else{
+            errs() << "EMPTY. ";
+        }
         errs()<< IListIt->destinationReg << " ";
         errs()<< IListIt->sourceReg1 << " ";
         errs()<< IListIt->sourceReg2 << "\n";

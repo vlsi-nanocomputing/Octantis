@@ -46,7 +46,7 @@ private:
   //  std::list<InstructionTable::instructionData>::iterator getIteratorToElement(int * position, std::list<InstructionTable::instructionData> * ptrIL);
 
 
-protected:
+public:
     LiMArray MemArray;
     FiniteStateMachine FSMLim;
 

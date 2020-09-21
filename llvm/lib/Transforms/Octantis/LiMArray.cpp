@@ -25,7 +25,7 @@ LiMArray::LiMArray()
 }
 
 ///Function to add a new memory Row inside the array
-///      NOTEs: The type is not essential, its default value should be "norm"
+///      NOTEs: The type is not essential, its default value should be "load"
 void LiMArray::addNewRow(int* const &rowName, std::string &rowType, int &rowLength){
 
     LiMRow tmpRow;
@@ -37,22 +37,29 @@ void LiMArray::addNewRow(int* const &rowName, std::string &rowType, int &rowLeng
 }
 
 ///Function to add a new LiM Row inside the array
-void LiMArray::addNewLiMRow(int* const &rowName, std::string &rowType, int &rowLength, int* const &src){
+void LiMArray::addNewLiMRow(int* const &rowName, std::string &rowType, std::list<std::string> &addLogic, int &rowLength, int* const &src){
 
     LiMRow tmpRow;
     tmpRow.rowType=rowType;
     tmpRow.rowLength=rowLength;
+
+    if(!addLogic.empty())
+    {
+        errs()<< "Lim compiler: additional logic list not empty!\n";
+        tmpRow.additionalLogic=addLogic;
+    }
+
     tmpRow.inputConnections.push_back(src);
 
     limArray.insert({rowName,tmpRow});
 }
 
 ///Function to add a new Row inside the array: partial result row
-///      NOTEs: The "norm" type has to be defined somewhere else
+///      NOTEs: The "load" type has to be defined somewhere else
 void LiMArray::addNewResultRow(int* const &rowName, int &rowLength, int* const &src){
 
     LiMRow tmpRow;
-    tmpRow.rowType="norm";
+    tmpRow.rowType="load";
     tmpRow.rowLength=rowLength;
     tmpRow.inputConnections.push_back(src);
 
@@ -62,7 +69,7 @@ void LiMArray::addNewResultRow(int* const &rowName, int &rowLength, int* const &
 
 ///Function to change the type of a LiM row: if a row is just defined as LiM
 /// it returns "false" and nothing changes.
-bool LiMArray::changeLiMRowType(int* const &rowName, std::string &newRowType){
+bool LiMArray::changeLiMRowType(int* const &rowName, std::string &newRowType, std::list<std::string> &additionalOperators){
 
     ///Iterator over LiM Array
     std::map<int * const, LiMRow>::iterator limArrayIntIT=findRow(rowName);
@@ -70,6 +77,12 @@ bool LiMArray::changeLiMRowType(int* const &rowName, std::string &newRowType){
     ///Check if the memory row is Lim or not (The iterator is constant)
     if(!checkIfRowIsLiM(limArrayIntIT)){
         limArrayIntIT->second.rowType=(newRowType);
+
+        ///Check the presence of additional operators
+        if(!additionalOperators.empty())
+        {
+            limArrayIntIT->second.additionalLogic=additionalOperators;
+        }
         return true;
     } else {
         return false;
@@ -78,11 +91,11 @@ bool LiMArray::changeLiMRowType(int* const &rowName, std::string &newRowType){
 
 
 ///Function to check if a memory row is LiM or not
-///  NOTEs: this has to be updated to remove the "norm" lable!
+///  NOTEs: this has to be updated to remove the "load" lable!
 bool LiMArray::checkIfRowIsLiM(std::map<int * const, LiMArray::LiMRow>::iterator &limArrayItpt){
 
-    ///Check if the the Row is type "norm"
-    return ((limArrayItpt->second.rowType)!= "norm") ? true : false;
+    ///Check if the the Row is type "load"
+    return ((limArrayItpt->second.rowType)!= "load") ? true : false;
 }
 
 
@@ -151,6 +164,9 @@ void LiMArray::printLiMArray(){
     //Iteratore over the input connection list
     std::list<int *>::iterator inList;
 
+    //Iterator over the additional logic list
+    std::list<std::string>::iterator inAddList;
+
     //Current LiM row
     int rowCount=0;
 
@@ -161,7 +177,23 @@ void LiMArray::printLiMArray(){
     } else {
         for(limArrayDebugIT=limArray.begin(); limArrayDebugIT!=limArray.end();++limArrayDebugIT){
             errs() << "Row " << rowCount << ", name " << limArrayDebugIT->first << ": Type " << (limArrayDebugIT->second).rowType
-                   << ", length " << (limArrayDebugIT->second).rowLength << ", inputs ";
+                   << ", length " << (limArrayDebugIT->second).rowLength << " additional integrated logic ";
+
+            if(((limArrayDebugIT->second).additionalLogic).empty())
+            {
+                errs() << "NULL, ";
+            } else {
+
+              for(inAddList=((limArrayDebugIT->second).additionalLogic).begin();
+                  inAddList!=((limArrayDebugIT->second).additionalLogic).end(); ++inAddList)
+              {
+                  errs() << *inAddList << ", ";
+              }
+
+            }
+
+
+            errs() << "inputs ";
             for(inList=((limArrayDebugIT->second).inputConnections).begin();inList!=((limArrayDebugIT->second).inputConnections).end(); ++inList){
                 errs() << *inList << ", ";
             }

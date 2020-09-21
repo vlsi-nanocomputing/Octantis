@@ -36,6 +36,7 @@ public:
         binary,
         ret,
         ptr,
+        swi, //Switch instruction
         unknown
     };
 
@@ -86,7 +87,7 @@ private:
     AdditionalLogicPorts changeLogic;
 
 private:
-    /// Structure useful to store tmp informations
+    /// Structure useful to store tmp information
     /// about the index of the array parsed
     struct indexStruct{
         int * ptrName;
@@ -94,6 +95,31 @@ private:
         int index;
         bool valid=false; //A getElementPtr instruction is parsed
     } infoAboutPtr;
+
+    /// Structure useful to store tmp information
+    /// about switch statements
+    struct switchStruct{
+        int * destReg=nullptr;
+        int * srcReg1=nullptr;
+        int * srcReg2=nullptr;
+        int numOfCases;
+        std::list<std::string> operators; //The order is important for the
+                                          //ident. of MUX position.
+        bool valid=false; //Useful to check if it is the first case of a switch
+    };
+
+private:
+    /// List of the invalid basic block (useful after analyzing the
+    /// switch cases)
+    std::list<int *> invalidBB;
+
+    /// Iterator over the invalidBB list
+    std::list<int *>::iterator invalidBBIT;
+
+public:
+    /// Fuction useful to define if a basic block is valid (switch
+    /// cases)
+    bool isBBValid(BasicBlock &bb);
 
 
 public:

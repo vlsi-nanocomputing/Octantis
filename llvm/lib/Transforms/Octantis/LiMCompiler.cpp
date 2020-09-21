@@ -27,7 +27,7 @@ LiMCompiler::LiMCompiler(InstructionTable & ptrIT):zeroAddr(((ptrIT.instructionL
 
     errs() << "LiM Compiler, starting... ptrInstrList="<<ptrInstrList<<".\n\n";
 
-    //Iteration over the instruction list
+    //Iteration over the instruction listspecifications
     for (instrListIT=(*ptrInstrList).begin(); instrListIT!=(*ptrInstrList).end(); ++instrListIT) {
 
         errs () << "\tEntering the reading loop...\n";
@@ -40,7 +40,7 @@ LiMCompiler::LiMCompiler(InstructionTable & ptrIT):zeroAddr(((ptrIT.instructionL
             //Temporary variable: It has to be removed considering
             //the info inside the config. file.
             int parallelism=32;
-            std::string type="norm";
+            std::string type="load";
 
             //Add new load instruction to the MemArray (CHECK IF NECESSARY ALL THESE REFERENCES!)
             MemArray.addNewRow(instrListIT->destinationReg, type, parallelism); //The length of the LiM words has to be defined inside the
@@ -78,7 +78,7 @@ LiMCompiler::LiMCompiler(InstructionTable & ptrIT):zeroAddr(((ptrIT.instructionL
                 //Update the effective in for the destination register:
                 effInForDestReg=instrListIT->sourceReg1;
 
-            } else if(MemArray.changeLiMRowType(instrListIT->sourceReg2, instrListIT->operation)){
+            } else if(MemArray.changeLiMRowType(instrListIT->sourceReg2, instrListIT->operation, instrListIT->specifications)){
                 //If the sourceReg2 is a normal memory row the function replaces its structure into LiM
                 //whose type is defined by the operation that has to be performed.
 
@@ -89,7 +89,7 @@ LiMCompiler::LiMCompiler(InstructionTable & ptrIT):zeroAddr(((ptrIT.instructionL
                 //Update the available source register with the corresponding LiM structure (LIFO approach)
                 effInForDestReg=instrListIT->sourceReg2;
 
-            } else if(MemArray.changeLiMRowType(instrListIT->sourceReg1, instrListIT->operation)){
+            } else if(MemArray.changeLiMRowType(instrListIT->sourceReg1, instrListIT->operation, instrListIT->specifications)){
                 //Add new input connection for sourceReg1
                 errs() << "\tChange LiM row performed!\n";
                 MemArray.addNewInputConnection(instrListIT->sourceReg1, instrListIT->sourceReg2);
@@ -122,7 +122,15 @@ LiMCompiler::LiMCompiler(InstructionTable & ptrIT):zeroAddr(((ptrIT.instructionL
                 //Then, a new instance of the data is added inside the map describing the
                 //LiM array: the new row is associated to the same key of the "parent" one
                 //inside the map
-                MemArray.addNewLiMRow(instrListIT->destinationReg, instrListIT->operation, parallelism, instrListIT->sourceReg2);
+                MemArray.addNewLiMRow(instrListIT->destinationReg, instrListIT->operation, instrListIT->specifications,
+                                      parallelism, instrListIT->sourceReg2);
+
+                ////////////DEBUG///////////
+                if(!(instrListIT->specifications).empty())
+                {
+                    errs()<< "Lim compiler: additional logic list not empty!\n";
+                }
+                /////////END DEBUG//////////
 
                 //Allocate the instruction in time, inside the FSM
                 FSMLim.addNewInstruction(instrListIT->allocTime, instrListIT->destinationReg);

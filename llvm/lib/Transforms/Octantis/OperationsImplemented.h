@@ -30,7 +30,8 @@ const std::map<std::string, std::string> LimOperations = {
     {"or", "bitwise"},
     {"nor", "bitwise"},
     {"xnor", "bitwise"},
-    {"xor", "bitwise"}
+    {"xor", "bitwise"},
+    {"switch", "bitwise"}
 };
 
 //Place here the list of elements that Octantis

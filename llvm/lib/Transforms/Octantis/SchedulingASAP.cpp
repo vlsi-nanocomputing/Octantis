@@ -191,6 +191,116 @@ void SchedulingASAP::addNewInstruction(Instruction &I)
     }
         break;
 
+    case swi:
+    {
+        //Implementation of multiple logic inside a LiM cell
+        errs()<< "Switch statement detected!\n";
+
+        SwitchInst *SWI =dyn_cast<SwitchInst>(&I);
+        if(!SWI){
+            // The instruction doesn't represent a switch statement
+            llvm_unreachable("SchedulingASAP error: current instruction not recognized.\n");
+        }
+
+        //Definition of the structure characterizing the switch stat.
+        switchStruct intSwitchStruct;
+
+        //Variable for the control signal
+        int * controlSig;
+
+        //intSwitchStruct.destReg=(int *) &I; //Not correct: the destination is a register
+        intSwitchStruct.numOfCases=SWI->getNumCases();
+
+        errs() << "\tSwitch information:\n";
+        errs() <<"\t\t-Num of cases: " << SWI->getNumCases() << "\n";
+        errs() <<"\t\t-Num of Operands: " << SWI->getNumOperands() << "\n";
+
+        //The default value is DISCARDED:
+        invalidBB.push_back((int *) SWI->getDefaultDest());
+
+        //Invalidate the signal for the mux selection (control signal)
+        //and introduction of a new control signal inside the proper list
+        controlSig=(int *) SWI->getCondition();
+        IT.RemoveInstructionFromList(controlSig);
+        IT.addControlSignal(controlSig);
+
+
+        if(SWI->getNumCases() >= 2)
+        {
+            //Visiting the switch stamentes
+            for (unsigned var = 2, end = SWI->getNumOperands(); var != end; var += 2) {
+
+                //Get the condition
+                Value *condition = SWI->getOperand(var);
+                ConstantInt* CI = dyn_cast<ConstantInt>(condition);
+                errs() << "The condition of the switch statement is: " << CI->getSExtValue() << "\n";
+
+                //Get the associated basic block
+                Value *value = SWI->getOperand(var);
+                assert(value); //Check if the operations has gone well
+                BasicBlock *nextBB = dyn_cast<BasicBlock>(SWI->getOperand(var+1));
+
+                //Invalidate the associated basic block
+                invalidBB.push_back((int *) &*nextBB);
+
+                for(Instruction &currentInst : *nextBB)
+                {
+                    //Check if the intSwitchStruct has invalid members (first case)
+                    if(var==2){
+
+                        //Recursive call for the alloca and store operations
+                        if(isa <LoadInst> (currentInst) || isa <StoreInst> (currentInst))
+                        {
+                            addNewInstruction(currentInst);
+                        }
+
+                    }
+
+                    //Discarding all the instructions not needed for the definition
+                    //of the implemented operations inside the cell
+                    if(isa <BinaryOperator> (currentInst))
+                    {
+                        (intSwitchStruct.operators).push_back(currentInst.getOpcodeName());
+                        errs() << "\t\tThe content of the switch for operand "<< value << " is: " << currentInst << "\n";
+
+                        //Check if the intruction belongs to the first case
+                        if(intSwitchStruct.valid==false){
+                            intSwitchStruct.destReg=(int *) &currentInst;
+                            intSwitchStruct.srcReg1=(int *) currentInst.getOperand(0);
+                            intSwitchStruct.srcReg2=(int *) currentInst.getOperand(1);
+                            intSwitchStruct.valid=true;
+                        }
+                    }
+
+                }
+            }
+
+
+            //Define the minimum time in which schedule the operation
+            //(i.e. when all the operands are ready)
+            int Top1=IT.getAvailableTime(intSwitchStruct.srcReg1);
+            int Top2=IT.getAvailableTime(intSwitchStruct.srcReg2);
+
+            int Tex=std::max(Top1,Top2);
+
+            //The result will be written at the next clock cycle
+            Tex++;
+
+
+
+            IT.AddSwitchInstructionToList(Tex, Tex, "switch", intSwitchStruct.operators, intSwitchStruct.destReg,
+                                          intSwitchStruct.srcReg1, intSwitchStruct.srcReg2);
+
+
+
+        } else {
+            //The switch statement has less that two ways, error in the definition of the instruction
+            llvm_unreachable("Error in SchedulingASAP: the definition of the switch statement is incorrect.");
+        }
+
+    }
+        break;
+
     case ret:
     {
         //To be implemented: actually it doesn't do anything!
@@ -249,6 +359,9 @@ SchedulingASAP::Instr SchedulingASAP::identifyInstr(Instruction &I){
 
     if(isa<GetElementPtrInst>(I))
         return ptr;
+
+    if(isa<SwitchInst> (I))
+        return swi;
 
     //Not valid instruction
     return unknown;
@@ -313,6 +426,13 @@ int * SchedulingASAP::getRealParent(int* &aliasParent){
 InstructionTable & SchedulingASAP::getIT(){
     IT.printIT();
     return IT;
+}
+
+bool SchedulingASAP::isBBValid(BasicBlock &bb){
+
+    invalidBBIT=find(invalidBB.begin(), invalidBB.end(), (int*)&bb);
+    return (invalidBBIT==invalidBB.end()) ? true : false;
+
 }
 
 

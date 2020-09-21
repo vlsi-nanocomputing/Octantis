@@ -20,6 +20,7 @@
 //Octantis' classes
 #include "SchedulingASAP.h"
 #include "LiMCompiler.h"
+#include "PrintDexFile.h"
 //#include "InstructionTable.h"
 
 using namespace llvm;
@@ -34,6 +35,8 @@ namespace octantis{
     void compileAndPrint(){
           //Here the definition of the LiM COMPILER
           LiMCompiler Compiler(ASAPScheduler.getIT());
+          //PrintDexFile Printer(&(Compiler.MemArray), &(Compiler.FSMLim));
+          //Printer.print();
       }
 
     // SCHEDULING
@@ -41,9 +44,19 @@ namespace octantis{
         for (BasicBlock &BB : F) {
             errs() << "Basic Block: " << BB.getName() << " size " << BB.size() << "\n";
 
-            for (Instruction &I : BB) {
-                ASAPScheduler.addNewInstruction(I);
+            //Verification if the basic block is valid.
+            if(ASAPScheduler.isBBValid(BB))
+            {
+                errs() << "This BB is valid!\n";
+
+                // Parsing the internal instructions
+                for (Instruction &I : BB) {
+                    ASAPScheduler.addNewInstruction(I);
+                }
             }
+
+            errs() << "This BB is NOT valid and it won't be parsed!\n";
+
         }
 
       compileAndPrint();
