@@ -133,6 +133,7 @@ void PrintDexFile::printLim(){
 
         errs() << "LimArray cycle.\n";
         identifyLIMRowAndPrint(currentRow, &limArrayIT);
+        ++currentRow;
     }
 
     Output << "\tend cells\n\n";
@@ -308,7 +309,19 @@ void PrintDexFile::identifyLIMRowAndPrint(int &currentRow, std::map<int * const,
 
         if(opType=="null")
         {
-            addDataRow(currentRow, rowName);
+            errs() << "A load operation is considered!\n";
+
+            //Check if there are input operands
+            if((((*mapIT)->second).inputConnections).empty())
+            {
+                //Source memory row
+                addDataRow(currentRow, rowName, nullptr);
+
+            } else {
+                //Result memory row
+                addDataRow(currentRow, rowName, (((*mapIT)->second).inputConnections).front());
+
+            }
 
         } else if(opType=="bitwise"){
 
@@ -316,6 +329,11 @@ void PrintDexFile::identifyLIMRowAndPrint(int &currentRow, std::map<int * const,
             {
                 printBITWISEMux2to1(((*mapIT)->second).rowType, currentRow, rowName,
                                     (((*mapIT)->second).inputConnections).front(), (((*mapIT)->second).inputConnections).back());
+
+            } else if (((*mapIT)->second).rowType=="switch"){
+
+                printMIXED(((*mapIT)->second).rowType, currentRow, rowName,(((*mapIT)->second).inputConnections).front(),
+                           ((*mapIT)->second).additionalLogic);
 
             } else {
 
@@ -345,8 +363,43 @@ void PrintDexFile::identifyLIMRowAndPrint(int &currentRow, std::map<int * const,
 }
 
 /// It is invoked when a normal memory row is declared: CHECK THE TYPE!
-void PrintDexFile::addDataRow(int &currentRow, int* const &nameRow){
+void PrintDexFile::addDataRow(int &currentRow, int* const &nameRow, int* const &nameSrc){
+
+    //Name of the Output pin of the source row (if any)
+    std::string outSrc;
+
+    std::string sourceCells;
+    int sourceCellsBaseIndex;
+
+    //Update the NamesMap
     insertNamesMap(nameRow, "Memory", currentRow);
+
+    if(nameSrc!=nullptr){
+        //Result row
+        getNameAndIndexOfSourceRow(nameSrc, sourceCells, sourceCellsBaseIndex);
+
+        //Check if the source cells are FAs/HAs:
+        getOutPinName(sourceCells, outSrc);
+
+        //Also here the parallelism should refer to
+        //a configuration file
+        for(int i=0; i<32; ++i){
+
+            //Map Section
+            OutputLiMMap << "\t\t" << sourceCells << "("
+                         << sourceCellsBaseIndex << ","
+                         << i << ")." << outSrc
+                         << " -> Memory(" << currentRow
+                         << "," << i << ").WR\n";
+        }
+
+    } else {
+        //Source row
+        //Nothing is done!
+    }
+
+
+
 }
 
 /// It prints the correct code for any BITWISE lim cell
@@ -461,7 +514,8 @@ void PrintDexFile::printADD(int &currentRow, int* const &nameRow, int* const &na
 }
 
 /// It prints the correct code for any MIXED lim cell
-void PrintDexFile::printMIXED(int &currentRow, int * const &nameRow, int* const &nameSrc, std::list<std::string> &operators){
+void PrintDexFile::printMIXED(std::string &bitwiseOp, int &currentRow, int* const &nameRow,
+                              int* const &nameSrc, std::list<std::string> &operators){
 
     // Support variable to store the Upper case string of bitwiseOp
     std::string implementedCell;
@@ -527,13 +581,13 @@ void PrintDexFile::printMIXED(int &currentRow, int * const &nameRow, int* const 
             OutputLiMMap << "\t\tMemory(" << currentRow
                          << "," << i << ").RD -> " << *tmpIT << "("
                          << currentRow << "," << i << ").IN0\n";
-            OutputLiMMap <<*tmpIT << "(" << currentRow << "," << i
-                         << ").OUT0 -> Mux(" << currentRow
-                         << "," << i << ").IN" << muxCount << "\n";
             OutputLiMMap << "\t\t" << sourceCells << "("
                          << sourceCellsBaseIndex << ","
-                         << i << ")." << outSrc << *tmpIT << "("
-                         << currentRow << "," << i << ").IN1\n";
+                         << i << ")." << outSrc << " -> " << *tmpIT
+                         << "(" << currentRow << "," << i << ").IN1\n";
+            OutputLiMMap <<"\t\t" << *tmpIT << "(" << currentRow << ","
+                         << i << ").OUT0 -> Mux(" << currentRow
+                         << "," << i << ").IN" << muxCount << "\n";
         }
 
         //Definition of the output multiplexer

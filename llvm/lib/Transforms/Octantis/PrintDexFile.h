@@ -80,7 +80,7 @@ private:
     void identifyLIMRowAndPrint(int &currentRow, std::map<int * const, LiMArray::LiMRow>::iterator * mapIT);
 
     /// It is invoked when a normal memory row is declared
-    void addDataRow(int &currentRow, int* const &nameRow);
+    void addDataRow(int &currentRow, int* const &nameRow, int * const &nameSrc);
 
     /// It prints the correct code for any BITWISE lim cell
     void printBITWISE(std::string &bitwiseOp, int &currentRow, int* const &nameRow, int* const &nameSrc);
@@ -89,7 +89,7 @@ private:
     void printADD(int &currentRow, int* const &nameRow, int* const &nameSrc);
 
     /// It prints the correct code for any MIXED lim cell
-    void printMIXED(int &currentRow, int * const &nameRow, int* const &nameSrc, std::list<std::string> &operators);
+    void printMIXED(std::string &bitwiseOp, int &currentRow, int * const &nameRow, int* const &nameSrc, std::list<std::string> &operators);
 
     /// It prints the correct code for any BITWISE lim cell with a 2to1 mux in input
     /// so that 2 input bits for the logic are available.

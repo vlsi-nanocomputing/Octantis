@@ -35,8 +35,11 @@ namespace octantis{
     void compileAndPrint(){
           //Here the definition of the LiM COMPILER
           LiMCompiler Compiler(ASAPScheduler.getIT());
+
+          /* DISABLED UNTIL THE INPUT INTERFACES WITH DEXIMA ARE NOT STABLE! */
           //PrintDexFile Printer(&(Compiler.MemArray), &(Compiler.FSMLim));
           //Printer.print();
+          /* --------------------------------------------------------------- */
       }
 
     // SCHEDULING
