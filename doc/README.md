@@ -39,7 +39,7 @@ The thesis work has been inserted into this context with the introduction of *Oc
 
 The Octantis’ project considers the *LLVM compiler infrastructure* to realize the whole process of translation from C-code to DExIMA input files. The LLVM framework provides libraries useful to optimize and generate a code for a target architecture starting from an input source. It is distributed under an opensource license, which allows a free customization of each of its components. In the panorama of C compilers, the choice fell on LLVM, to the detriment of the tools provided by the competitor *GNU-GCC*, considering specially the flexibility of the former infrastructure, which can count on a more active community of developers and richer technical documentations.
 
-![The ``binary system'': Octantis and DExIMA.](LIM_Explorer.png)
+![The ``binary system'': Octantis and DExIMA.](./LIM_Explorer.png)
 
 The whole project has been designed so as to guarantee the *modularity* and the *maintenance* of the code. For what concerns the maintenance, a detailed documentation is provided together with Octantis in order to prepare the designer to work on it in a short time. The modularity is then guaranteed to allow the same developers to extend the capability of the tool during time.
 
