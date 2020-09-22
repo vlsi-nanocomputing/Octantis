@@ -73,31 +73,56 @@ void SchedulingASAP::addNewInstruction(Instruction &I)
         int * parentReg;
         int index=0; //Default value for traditional load instructions (no array)
 
-        //Check if the parsed instruction refers to an array
-        if(infoAboutPtr.valid==true)
+        //Check if the element refers to an iterator (for loops)
+        itVariablesMapIT=itVariablesMap.find((int*)I.getOperand(0));
+        if(itVariablesMapIT!=itVariablesMap.end())
         {
-            //Check if the assumption is correct
-            if(infoAboutPtr.ptrName==(int *) I.getOperand(0))
+            //Loop iterator! It has not to be scheduled
+            //  NOTE: A loop iterator cannot be considered
+            //        for other calculations!! Please update
+            //        the behavior of the scheduler or consider
+            //        another variable into the input code.
+
+            //Update the alias map
+            aliasMap.insert({(int*)&I,(int *) I.getOperand(0)});
+
+        }
+        else {
+
+            //Check if the parsed instruction refers to an array
+            if (infoAboutPtr.valid==true)
             {
-                errs() << "\tCheck on the index is correct!\n";
-                //The element derives from an array
-                parentReg=infoAboutPtr.srcReg;
-                index=infoAboutPtr.index;
-                infoAboutPtr.valid=false;
+                //Check if the assumption is correct
+                if(infoAboutPtr.ptrName==(int *) I.getOperand(0))
+                {
+                    errs() << "\tCheck on the index is correct!\n";
+                    //The element derives from an array
+                    parentReg=infoAboutPtr.srcReg;
+                    index=infoAboutPtr.index;
+                    infoAboutPtr.valid=false;
+                } else {
+                    llvm_unreachable("Error in SchedulingASAP: load instruction after GEP refers to an unknown pointer.");
+                }
+
             } else {
-                llvm_unreachable("Error in SchedulingASAP: load instruction after GEP refers to an unknown pointer.");
+                parentReg = (int *) I.getOperand(0);
             }
 
-        } else {
-            parentReg = (int *) I.getOperand(0);
-        }
+            if (!IT.isParentValid(parentReg,index)){
+                parentReg = getRealParent(parentReg);
+            }
 
-        if (!IT.isParentValid(parentReg,index)){
-            parentReg = getRealParent(parentReg);
-        }
+            //Check if the instruction is inside a loop
+            if(loopInfo.valid==true)
+            {
+                IT.AddInstructionToList(Timer, Timer, I.getOpcodeName(), (int *) &I, parentReg, nullptr, loopInfo.iterations);
+            } else {
+                int iterations=1;
+                IT.AddInstructionToList(Timer, Timer, I.getOpcodeName(), (int *) &I, parentReg, nullptr,iterations);
+            }
 
-        IT.AddInstructionToList(Timer, Timer, I.getOpcodeName(), (int *) &I, parentReg, nullptr);
-        aliasMap.insert(std::pair<int * const, int * const>((int *)&I, parentReg)); //Check the order
+            aliasMap.insert(std::pair<int * const, int * const>((int *)&I, parentReg)); //Check the order
+        }
     }
         break;
 
@@ -158,7 +183,15 @@ void SchedulingASAP::addNewInstruction(Instruction &I)
                 //The result will be written at the next clock cycle
                 Tex++;
 
-                IT.AddInstructionToList(Tex, Tex, I.getOpcodeName(), (int *) &I, (int *)I.getOperand(0), (int *)I.getOperand(1));
+                if(loopInfo.valid==true)
+                {
+                    IT.AddInstructionToList(Tex, Tex, I.getOpcodeName(), (int *) &I, (int *)I.getOperand(0), (int *)I.getOperand(1),loopInfo.iterations);
+                } else {
+                    int iterations=1;
+                    IT.AddInstructionToList(Tex, Tex, I.getOpcodeName(), (int *) &I, (int *)I.getOperand(0), (int *)I.getOperand(1),iterations);
+                }
+
+
         }
 
     }
@@ -179,9 +212,25 @@ void SchedulingASAP::addNewInstruction(Instruction &I)
 
         //Get the index
         Value *offset = GEP->getOperand(2);
-        ConstantInt* CI = dyn_cast<ConstantInt>(offset);
 
-        index=CI->getSExtValue();
+        if(ConstantInt* CI = dyn_cast<ConstantInt>(offset)){
+            index=CI->getSExtValue();
+        } else {
+            //Temporary variable for the parent variable
+            //derived from the store instruction
+            int * parent=(int *) offset;
+
+            //Find if it represents a constant
+            itVariablesMapIT=itVariablesMap.find((int *) offset);
+
+            if(itVariablesMapIT==itVariablesMap.end()){
+                parent=getRealParent(parent);
+            }
+
+            index=itVariablesMap[parent];
+        }
+
+
 
         // Set the useful information for the following input instruction
         infoAboutPtr.ptrName=(int *)&I;
@@ -287,9 +336,17 @@ void SchedulingASAP::addNewInstruction(Instruction &I)
             Tex++;
 
 
+            if(loopInfo.valid==true)
+            {
+                IT.AddSwitchInstructionToList(Tex, Tex, "switch", intSwitchStruct.operators, intSwitchStruct.destReg,
+                                              intSwitchStruct.srcReg1, intSwitchStruct.srcReg2, loopInfo.iterations);
+            } else {
+                int iterations=1;
+                IT.AddSwitchInstructionToList(Tex, Tex, "switch", intSwitchStruct.operators, intSwitchStruct.destReg,
+                                              intSwitchStruct.srcReg1, intSwitchStruct.srcReg2, iterations);
+            }
 
-            IT.AddSwitchInstructionToList(Tex, Tex, "switch", intSwitchStruct.operators, intSwitchStruct.destReg,
-                                          intSwitchStruct.srcReg1, intSwitchStruct.srcReg2);
+
 
 
 
@@ -304,6 +361,38 @@ void SchedulingASAP::addNewInstruction(Instruction &I)
     case ret:
     {
         //To be implemented: actually it doesn't do anything!
+    }
+        break;
+
+    case branch:
+    {
+        //To be implemented: actually it doesn't do anything!
+    }
+        break;
+
+    case sext:
+    {
+        //Sign extension: not actually relevant.
+
+        //Update of the label associated to the loaded data
+        int * parentReg;
+        int * newParentReg;
+        int * tmp;
+
+        parentReg=(int*) I.getOperand(0);
+        newParentReg=(int*) &I;
+
+        aliasMapIT=aliasMap.find(parentReg);
+        if(aliasMapIT!=aliasMap.end())
+        {
+            tmp=aliasMapIT->second;
+            aliasMap.erase(aliasMapIT);
+            aliasMap.insert({newParentReg,tmp});
+
+        } else {
+            llvm_unreachable("Error in SchedulingASAP: in aliasMap looking for a not present varible.");
+        }
+
     }
         break;
 
@@ -362,6 +451,15 @@ SchedulingASAP::Instr SchedulingASAP::identifyInstr(Instruction &I){
 
     if(isa<SwitchInst> (I))
         return swi;
+
+    if(isa<BranchInst> (I))
+        return branch;
+
+    if(isa<ICmpInst> (I))
+        return icmp;
+
+    if(isa<SExtInst> (I))
+        return sext;
 
     //Not valid instruction
     return unknown;
@@ -428,11 +526,95 @@ InstructionTable & SchedulingASAP::getIT(){
     return IT;
 }
 
+///Function to parse Loops information
+void SchedulingASAP::parseLoopInfo(BasicBlock &BB){
+
+    //A loop has been identified
+    loopInfo.valid=true;
+    loopInfo.loopHeader=(int *) &BB;
+
+    // Parsing the internal instructions
+    for (Instruction &I : BB) {
+
+        Instr i=identifyInstr(I);
+
+        errs()<<"Fetched: " << I << "; recognized: " << i << "\n";
+
+        switch(i)
+        {
+            case load:
+            {
+                //This is the variable of the counter
+                //Update of the associated map to keep track
+                //its value.
+                //  NOTE: the index strarting from 0 is an
+                //        assumption that has to be removed!!
+                itVariablesMap.insert({(int*)I.getOperand(0),0});
+
+            }
+                break;
+
+            case icmp:
+            {
+                //Condition through which determine the number
+                //loop iterations
+                Value *iter = I.getOperand(1);
+                ConstantInt* CI = dyn_cast<ConstantInt>(iter);
+                int iterations=CI->getSExtValue();
+
+                errs() << "The iterations of the loop statement are: " << iterations << "\n";
+                loopInfo.iterations=iterations;
+
+            }
+                break;
+
+            case branch:
+            {
+                //Identification of the body bb and the terminator bb
+                loopInfo.loopBody=(int *) I.getOperand(2);
+                loopInfo.loopTerm=(int *) I.getOperand(4);
+
+                errs() << "Loop body: " << (int *) I.getOperand(2) << "\n";
+                errs() << "Loop terminator: " << (int *) I.getOperand(4) << "\n";
+
+            }
+                break;
+
+            default:
+            {
+                llvm_unreachable("SchedulingASAP error: current instruction inside loop not recognized.\n");
+            }
+
+        }
+
+    }
+}
+
+///Function to know if a basic block is the last one belonging to a loop
+bool SchedulingASAP::isTheLastBBInLoop(BasicBlock &BB){
+    //The loop start again during the next iteration
+    return (loopInfo.loopHeader==(int *)&BB) ? true : false;
+}
+
+
+/// Fuction useful to define if a basic block is valid (switch
+/// cases)
 bool SchedulingASAP::isBBValid(BasicBlock &bb){
 
     invalidBBIT=find(invalidBB.begin(), invalidBB.end(), (int*)&bb);
     return (invalidBBIT==invalidBB.end()) ? true : false;
 
+}
+
+/// Function useful to set a basic block as not valid (loop
+/// case)
+void SchedulingASAP::setBBAsNotValid(BasicBlock &bb){
+     invalidBB.push_back((int *) &bb);
+}
+
+///Function to terminate the scheduling of loop instructions
+void SchedulingASAP::endOfCurrentLoop(){
+    loopInfo.valid=false;
 }
 
 

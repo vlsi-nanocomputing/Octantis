@@ -37,6 +37,9 @@ public:
         ret,
         ptr,
         swi, //Switch instruction
+        branch,
+        icmp,
+        sext, //Sign extension
         unknown
     };
 
@@ -66,6 +69,15 @@ public:
 
     ///Function to return the pointer to the Instruction Table
     InstructionTable & getIT();
+
+    ///Function to parse Loops information
+    void parseLoopInfo(BasicBlock &BB);
+
+    ///Function to know if a basic block is the last one belonging to a loop
+    bool isTheLastBBInLoop(BasicBlock &BB);
+
+    ///Function to terminate the scheduling of loop instructions
+    void endOfCurrentLoop();
 
 
 /*-----------------------------DEBUG FUNCTIONS-------------------------------*/
@@ -109,6 +121,17 @@ private:
     };
 
 private:
+
+    ///Structure for storing the information of loops (if any)
+    struct loopInfoStruct{
+        int * loopHeader;
+        int * loopBody;
+        int * loopTerm;
+        int iterations;
+        bool valid=false;
+    }loopInfo;
+
+private:
     /// List of the invalid basic block (useful after analyzing the
     /// switch cases)
     std::list<int *> invalidBB;
@@ -120,6 +143,10 @@ public:
     /// Fuction useful to define if a basic block is valid (switch
     /// cases)
     bool isBBValid(BasicBlock &bb);
+
+    /// Function useful to set a basic block as not valid (loop
+    /// case)
+    void setBBAsNotValid(BasicBlock &bb);
 
 
 public:
@@ -136,6 +163,15 @@ private:
 
     /// Iterator over aliases map
     std::map<int * const, int * const>::iterator aliasMapIT;
+
+    /// Map useful for keeping track of the variables usefulf
+    /// to implement iterators (like in loops)
+    std::map<int * const, int> itVariablesMap;
+
+    /// Iterator over the itVariablesMap
+    std::map<int * const, int>::iterator itVariablesMapIT;
+
+
 
     /// Map for storing the temporary index for accessing
     /// an array

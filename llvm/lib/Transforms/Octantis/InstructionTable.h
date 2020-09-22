@@ -43,15 +43,16 @@ public:
     int GetIteratorValue();
 
     ///Function useful to put a new operation instruction into the instructionList
-    void AddInstructionToList(int &allocTime, int &lastModifTime, std::string op, int* const destReg, int* const src1Reg, int * const src2Reg);
+    void AddInstructionToList(int &allocTime, int &lastModifTime, std::string op, int* const destReg, int* const src1Reg,
+                              int * const src2Reg, int &loopFactor);
 
     ///Function useful to put a new switch operation into the instructionList
     void AddSwitchInstructionToList(int &allocTime, int &lastModifTime, std::string op, std::list<std::string> &switchList,
-                                    int* const destReg, int* const src1Reg, int * const src2Reg);
+                                    int* const destReg, int* const src1Reg, int * const src2Reg, int &loopFactor);
 
     ///Function useful to put a new operation instruction into the instructionList in a specific position (identified another location "refPos")
     void AddInstructionToListAfterRefPos(int* const &refPos, int &allocTime, int &lastModifTime, std::string op, int* const destReg,
-                                         int* const src1Reg, int* const src2Reg);
+                                         int* const src1Reg, int* const src2Reg, int &loopFactor);
 
     ///Function useful to put a new alloca instruction into the instructionList.
     ///Here the src1Reg is the name of the Alias of the allocated data: the load
@@ -99,6 +100,7 @@ public:
         int * destinationReg;
         int * sourceReg1;
         int * sourceReg2;
+        int loopFactor; //Number of allocation per instruction
     };
 
     ///Allocated data: they are typically inside the stack, so outside the memory.

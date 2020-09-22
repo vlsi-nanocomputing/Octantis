@@ -13,9 +13,9 @@
 #include "llvm/Pass.h"
 #include "llvm/Support/raw_ostream.h"
 
-//Test Include files
-#include "llvm/IR/User.h"
-#include "llvm/Analysis/DependenceAnalysis.h"
+//Include files for Loop Analysis
+#include "llvm/Analysis/LoopInfo.h"
+#include "llvm/CodeGen/MachineLoopInfo.h"
 
 //Octantis' classes
 #include "SchedulingASAP.h"
@@ -42,10 +42,60 @@ namespace octantis{
           /* --------------------------------------------------------------- */
       }
 
+    void getAnalysisUsage(AnalysisUsage &AU) const override {
+          AU.setPreservesCFG();
+          AU.addRequired<LoopInfoWrapperPass>();
+        }
+
     // SCHEDULING
     bool runOnFunction(Function &F) override {
+
+        LoopInfo &LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
+
+        if(!LI.empty())
+        {
+            isThereALoop=true;
+            errs() << "A loop is present!\n";
+        }
+
         for (BasicBlock &BB : F) {
-            errs() << "Basic Block: " << BB.getName() << " size " << BB.size() << "\n";
+            errs() << "Basic Block: " << (int *) &BB << " size " << BB.size() << "\n";
+
+            //Check if the BB is a loop header
+            if(isThereALoop){
+
+                //Check if the successor is the last block of the loop
+                BasicBlock * successor = BB.getSingleSuccessor();
+                errs() << "The successor is: " << (int*) &(*successor) << "\n";
+
+
+                if(LI.isLoopHeader(&BB)){
+                    errs() << "\tThis is a Loop header!\n";
+
+                    //Invalidate the Header Basic Block
+                    ASAPScheduler.setBBAsNotValid(BB);
+
+                    //Pass the basic block to the scheduler for
+                    //the correct loop info extraction
+                    ASAPScheduler.parseLoopInfo(BB);
+                }
+
+                if(ASAPScheduler.isTheLastBBInLoop(*successor)){
+                    errs() << "The next BB is the last one!\n";
+
+                    //The next basic block will be escaped
+                    //  NOTE: there is the assumption that
+                    //        the loop proceeds traditionally
+                    //        (i.e. i=i+1). During the next
+                    //        updates impose chacks!
+                    ASAPScheduler.setBBAsNotValid(BB);
+
+                    //Terminate the scheduling of loop instructions
+                    ASAPScheduler.endOfCurrentLoop();
+
+
+                }
+            }
 
             //Verification if the basic block is valid.
             if(ASAPScheduler.isBBValid(BB))
@@ -70,6 +120,9 @@ namespace octantis{
 private:
     //Here the definition of the SCHEDULING ALGORITHM
     SchedulingASAP ASAPScheduler;
+
+    //Identification of loops
+    bool isThereALoop=false;
 
   };
 
