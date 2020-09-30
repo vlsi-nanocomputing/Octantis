@@ -33,7 +33,7 @@ public:
         alloc, //Alloca is a keyword
         load,
         store,
-        binary,
+        binary, //Also shift right/left
         ret,
         ptr,
         swi, //Switch instruction

@@ -145,6 +145,34 @@ void InstructionTable::AddAllocaInstructionToList(int &allocTime, int* const des
         allocMap.insert({destReg, tmpStruct});
 }
 
+///Function to add shift blocks inside an existing row
+/// NOTEs: Warning, here we lose important timing information!
+///        Problem to solve in future updates!
+void InstructionTable::AddShiftToList(int * const &refPos, std::string op){
+
+    //Check if the source row exists
+    std::list<instructionData>::iterator internalIT;
+
+    internalIT=getIteratorToElement(refPos);
+
+    if(internalIT!=instructionList.end())
+    {
+        //Check if the shift operand is already present
+        std::list<std::string>::iterator specsIT=find((internalIT->specifications).begin(),
+                                                      (internalIT->specifications).end(),
+                                                      op);
+        if(specsIT==(internalIT->specifications).end())
+        {
+            (internalIT->specifications).push_back(op);
+        }
+
+    } else {
+        //An error occurred
+        llvm_unreachable("Error in InstructionTable: the row that has to be modified does not exist!");
+    }
+}
+
+
 ///Function to change the kind of operation of an instruction and
 /// change the destination register of an operation
 void InstructionTable::ChangeOperatorAndDestReg(int * const srcLocation, std::string newOperator, int * const newSrcLocation){

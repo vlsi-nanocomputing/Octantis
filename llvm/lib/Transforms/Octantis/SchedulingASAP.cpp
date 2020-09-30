@@ -171,6 +171,25 @@ void SchedulingASAP::addNewInstruction(Instruction &I)
             errs() << "\tNOT instruction detected!\n";
             changeParentInNOT((int *)I.getOperand(0),I.getOpcodeName(),(int *) &I);
 
+        } else if(I.getOpcode()==Instruction::Shl || I.getOpcode()==Instruction::LShr || I.getOpcode()==Instruction::AShr){
+            //A shift operation has been fetched
+            errs()<< "Shift statement detected!\n";
+
+            //Variable to store the control signal
+            int * controlSig;
+
+            //Invalidate the signal for the shift (control signal)
+            //and introduction of a new control signal inside the proper list
+            controlSig=(int *) I.getOperand(1);
+            IT.RemoveInstructionFromList(controlSig);
+            IT.addControlSignal(controlSig);
+
+            //Add shift operand inside the input row
+            IT.AddShiftToList((int *)I.getOperand(0),I.getOpcodeName());
+
+            //Add the destination register to the alias map
+            aliasMap.insert(std::pair<int * const, int * const>((int *)&I, (int *)I.getOperand(0)));
+
         } else {
 
                 //Define the minimum time in which schedule the operation

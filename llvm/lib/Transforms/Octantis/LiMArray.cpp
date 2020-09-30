@@ -138,6 +138,23 @@ void LiMArray::addNewInputConnection(int* const &rowName, int* const &srcRowName
 
 }
 
+///Function to add logic inside a specific LiM row
+void LiMArray::addLogicToRow(int * const &rowName, std::string &additionalLogicType){
+
+    //Iterator over LiM Array
+    std::map<int * const, LiMRow>::iterator limArrayIntIT=findRow(rowName);
+
+    //Check if the row embeds already the shift operation
+    //Check in the additional logic list
+    std::list<std::string>::iterator specsIt=find((limArrayIntIT->second.additionalLogic).begin(),
+                                                  (limArrayIntIT->second.additionalLogic).end(),
+                                                  additionalLogicType);
+    if(specsIt==(limArrayIntIT->second.additionalLogic).end()){
+        (limArrayIntIT->second.additionalLogic).push_back(additionalLogicType);
+    }
+
+}
+
 ///Function to know if a memory row has the same type requested
 bool LiMArray::isLiMRowOfThisType(int* const &rowName, std::string &type){
 

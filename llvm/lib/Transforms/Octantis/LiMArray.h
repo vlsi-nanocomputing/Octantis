@@ -39,6 +39,9 @@ public:
     ///Function to add a new input connection to a LiM row
     void addNewInputConnection(int* const &rowName, int* const &srcRowName);
 
+    ///Function to add logic inside a specific LiM row
+    void addLogicToRow(int * const &rowName, std::string &additionalLogicType);
+
     ///Function to know if a memory row has the same type requested
     bool isLiMRowOfThisType(int* const &rowName, std::string &type);
 

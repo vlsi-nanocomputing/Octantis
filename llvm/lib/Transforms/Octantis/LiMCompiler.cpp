@@ -23,12 +23,23 @@ using namespace octantis;
 ///      NOTEs: To verify the correct content of the zeroAddr variable.
 LiMCompiler::LiMCompiler(InstructionTable & ptrIT):zeroAddr(((ptrIT.instructionList).begin())->destinationReg){
 
+    //Flag for the identification of shift operations
+//    bool isShiftLeft;
+//    bool isShiftRight;
+
+    //Variable to get the correct opcode (useful to identify the shift)
+    //unsigned Opcode;
+
     ptrInstrList = &(ptrIT.instructionList);
 
     errs() << "LiM Compiler, starting... ptrInstrList="<<ptrInstrList<<".\n\n";
 
     //Iteration over the instruction listspecifications
     for (instrListIT=(*ptrInstrList).begin(); instrListIT!=(*ptrInstrList).end(); ++instrListIT) {
+
+        //Initialization of the isShifts Flag
+//        isShiftLeft=false;
+//        isShiftRight=false;
 
         errs () << "\tEntering the reading loop...\n";
 
@@ -46,9 +57,35 @@ LiMCompiler::LiMCompiler(InstructionTable & ptrIT):zeroAddr(((ptrIT.instructionL
             MemArray.addNewRow(instrListIT->destinationReg, type, parallelism); //The length of the LiM words has to be defined inside the
                                                                                     //coniguration file.
 
+            //Check if shift operations are present
+            if(!(instrListIT->specifications).empty())
+            {
+                std::string shiftType=(instrListIT->specifications).front();
+                MemArray.addLogicToRow(instrListIT->destinationReg, shiftType);
+
+            }
+
         } else if(LimOperations.find(instrListIT->operation)!= LimOperations.end()){
             //Generic operation
             errs()<<"\tRead a generic operation from IT. Type: ->" << (instrListIT->operation) << "<-\n";
+
+            //Identification of particular instructions: the commented part
+            // is more approprate for the identification of the information.
+            // In the future updates implement it!
+
+//            Opcode=(unsigned) instrListIT->operation;
+
+//            if(Opcode==Instruction::Shl || Opcode==Instruction::Shr)
+//            {
+//                isShift=true;
+//            }
+
+//            if((instrListIT->operation)=="shl")
+//            {
+//                isShiftLeft=true;
+//            } else if ((instrListIT->operation)=="shr"){
+//                isShiftRight=true;
+//            }
 
             //Temporary variable: It has to be removed considering
             //the info inside the config. file.
@@ -59,8 +96,22 @@ LiMCompiler::LiMCompiler(InstructionTable & ptrIT):zeroAddr(((ptrIT.instructionL
             //provided by a LiM row.
             int * effInForDestReg;
 
-            //Check if one of the two operands has the same LiM type
+            //Check if the operation is a shift
+//            if(isShiftLeft || isShiftRight){
+
+//                //Check if the source reg is of the same type
+//                if(!MemArray.isLiMRowOfThisType(instrListIT->sourceReg1, instrListIT->operation)){
+
+//                    //Update the logic inside the LiM row
+//                    addLogicToRow(instrListIT->sourceReg1,instrListIT->operation);
+
+//                }
+
+//            }
+
             if(MemArray.isLiMRowOfThisType(instrListIT->sourceReg2, instrListIT->operation)){
+                //Check if one of the two operands has the same LiM type
+
                 //sourceReg2 of the same type
 
                 //Add new input connection for sourceReg2
@@ -68,6 +119,7 @@ LiMCompiler::LiMCompiler(InstructionTable & ptrIT):zeroAddr(((ptrIT.instructionL
 
                 //Update the effective in for the destination register:
                 effInForDestReg=instrListIT->sourceReg2;
+
 
             } else if (MemArray.isLiMRowOfThisType(instrListIT->sourceReg1, instrListIT->operation)){
                 //sourceReg1 of the same type
@@ -77,6 +129,7 @@ LiMCompiler::LiMCompiler(InstructionTable & ptrIT):zeroAddr(((ptrIT.instructionL
 
                 //Update the effective in for the destination register:
                 effInForDestReg=instrListIT->sourceReg1;
+
 
             } else if(MemArray.changeLiMRowType(instrListIT->sourceReg2, instrListIT->operation, instrListIT->specifications)){
                 //If the sourceReg2 is a normal memory row the function replaces its structure into LiM

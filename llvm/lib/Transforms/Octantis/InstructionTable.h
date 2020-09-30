@@ -54,6 +54,11 @@ public:
     void AddInstructionToListAfterRefPos(int* const &refPos, int &allocTime, int &lastModifTime, std::string op, int* const destReg,
                                          int* const src1Reg, int* const src2Reg, int &loopFactor);
 
+    ///Function to add shift blocks inside an existing row
+    /// NOTEs: Warning, here we lose important timing information!
+    ///        Problem to solve in future updates!
+    void AddShiftToList(int * const &refPos, std::string op);
+
     ///Function useful to put a new alloca instruction into the instructionList.
     ///Here the src1Reg is the name of the Alias of the allocated data: the load
     /// instruction is performed copying the allocated data into a new SSA register.
@@ -96,7 +101,7 @@ public:
         int lastModifTime;
         int lastReadTime;
         std::string operation;
-        std::list<std::string> specifications; //Useful for switch cases
+        std::list<std::string> specifications; //Useful for switch and shift cases
         int * destinationReg;
         int * sourceReg1;
         int * sourceReg2;
