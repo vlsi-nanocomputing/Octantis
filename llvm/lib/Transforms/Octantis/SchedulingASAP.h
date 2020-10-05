@@ -93,6 +93,9 @@ private:
     ///Fuction to change the parent type in negative logic and to update the correct destReg
     void changeParentInNOT(int * const parentName, std::string operation, int * const newParentName);
 
+//    ///Function to detect an accumulation inside a loop
+//    bool isAccumulation(Instruction &I); //Future Update!
+
 private:
     ///Object useful for defining the modified version of a
     /// specific logic operator
@@ -131,6 +134,16 @@ private:
         bool valid=false;
     }loopInfo;
 
+    ///Structure for storing the information of accumulations (if any)
+    /// NOTEs: It has to be removed in the future updates.
+    struct accumulationInfoStruct{
+        int * srcReg;
+        int validityCnt; //The sequence to indentify is load, add, store
+                           //(+1 if an element of the sequence is correct,
+                           // -1 otherwise)
+        bool valid=false;
+    }accumulationInfo;
+
 private:
     /// List of the invalid basic block (useful after analyzing the
     /// switch cases)
@@ -138,6 +151,12 @@ private:
 
     /// Iterator over the invalidBB list
     std::list<int *>::iterator invalidBBIT;
+
+    /// List of the input parameters
+    std::list<int *> inputFunctParam;
+
+    /// Iterator over the inputFunctParam list
+    std::list<int *>::iterator inputFunctParamIT;
 
 public:
     /// Fuction useful to define if a basic block is valid (switch
@@ -147,6 +166,9 @@ public:
     /// Function useful to set a basic block as not valid (loop
     /// case)
     void setBBAsNotValid(BasicBlock &bb);
+
+    ///Function to add a new input parameter for a function
+    void addFuncInputParameter(int * const &inParam);
 
 
 public:
@@ -170,8 +192,6 @@ private:
 
     /// Iterator over the itVariablesMap
     std::map<int * const, int>::iterator itVariablesMapIT;
-
-
 
     /// Map for storing the temporary index for accessing
     /// an array

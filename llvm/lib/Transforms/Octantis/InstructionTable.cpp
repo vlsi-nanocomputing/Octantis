@@ -69,8 +69,9 @@ void InstructionTable::AddInstructionToList(int &allocTime, int &lastModifTime, 
         instructionList.push_back(tmpStruct);
 }
 
-///Function useful to put a new switch operation into the instructionList
-void InstructionTable::AddSwitchInstructionToList(int &allocTime, int &lastModifTime, std::string op,
+///Function useful to put a new operation instruction into the instructionList with specifications
+/// (e.g. input/output line and switch statement)
+void InstructionTable::AddInstructionToListWithSpecs(int &allocTime, int &lastModifTime, std::string op,
                                                   std::list<std::string> &switchList, int* const destReg,
                                                   int* const src1Reg, int * const src2Reg, int &loopFactor){
 
@@ -148,7 +149,7 @@ void InstructionTable::AddAllocaInstructionToList(int &allocTime, int* const des
 ///Function to add shift blocks inside an existing row
 /// NOTEs: Warning, here we lose important timing information!
 ///        Problem to solve in future updates!
-void InstructionTable::AddShiftToList(int * const &refPos, std::string op){
+void InstructionTable::AddSpecToList(int * const &refPos, std::string op){
 
     //Check if the source row exists
     std::list<instructionData>::iterator internalIT;
@@ -272,6 +273,8 @@ int InstructionTable::getAvailableTime(int* const &srcReg){
     auto entryMatching = getIteratorToElement(srcReg);
     return entryMatching->lastModifTime;
 
+
+
 //    auto entryMatching = std::find_if(instructionList.cbegin(), instructionList.cend(), [srcReg] (const instructionData& iD) {
 //      return iD.destinationReg == srcReg;
 //    });
@@ -304,6 +307,25 @@ std::list<InstructionTable::instructionData>::iterator InstructionTable::getIter
         llvm_unreachable("InstructionTable error: current instruction is not present"
                          " inside the instruction table");
     }
+
+}
+
+///Function to get the first operand of an instruction
+int * InstructionTable::getFirstOperand(int * const &srcReg){
+
+    //Check if the source row exists
+    std::list<instructionData>::iterator internalIT;
+
+    internalIT=getIteratorToElement(srcReg);
+
+    return(internalIT->sourceReg1);
+}
+
+///Function to get the type of an intruction
+std::string InstructionTable::getType(int * const &srcReg){
+
+    auto entryMatching = getIteratorToElement(srcReg);
+    return entryMatching->operation;
 
 }
 
@@ -350,12 +372,12 @@ void InstructionTable::printAllocData(){
 
     for (MapIt = allocMap.begin(); MapIt != allocMap.end(); ++MapIt)
     {
-        errs()<< "\t\t Line " << lineCount << ": ";
+        errs()<< "\t Line " << lineCount << ": ";
         errs()<< "allocReg: " << MapIt->first << ", ";
-        errs()<< "allocTime: " << MapIt->second.allocTime << ", ";
+        errs()<< "allocTime: " << MapIt->second.allocTime << ". Validity:\n";
         for (auto i = (MapIt->second.valid).begin(); i != (MapIt->second.valid).end(); ++i)
         {
-            errs()<< "validityBit" << validCount << ": " << *i << "\n";
+            errs()<< "\t\tvalidityBit" << validCount << ": " << *i << "\n";
             ++validCount;
         }
 

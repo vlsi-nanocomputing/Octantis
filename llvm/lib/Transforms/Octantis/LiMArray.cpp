@@ -76,6 +76,19 @@ bool LiMArray::changeLiMRowType(int* const &rowName, std::string &newRowType, st
 
     ///Check if the memory row is Lim or not (The iterator is constant)
     if(!checkIfRowIsLiM(limArrayIntIT)){
+
+        ///Check if the row represents an input line
+        if(!(limArrayIntIT->second.additionalLogic).empty()){
+
+            std::list<std::string>::iterator specs;
+            //Note: the name "additionaLogic" has to be updated to avoid misunderstandings!
+            specs=find((limArrayIntIT->second.additionalLogic).begin(),(limArrayIntIT->second.additionalLogic).end(),"input_line");
+
+            if(specs!=(limArrayIntIT->second.additionalLogic).end()){
+                    return false;
+            }
+        }
+
         limArrayIntIT->second.rowType=(newRowType);
 
         ///Check the presence of additional operators

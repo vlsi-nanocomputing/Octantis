@@ -50,6 +50,12 @@ namespace octantis{
     // SCHEDULING
     bool runOnFunction(Function &F) override {
 
+        //Get the parameters of the function
+        for(auto args=F.arg_begin(); args!=F.arg_end(); ++args){
+            errs() << "A new input parameter found: "<< (int *) args << "\n";
+            ASAPScheduler.addFuncInputParameter((int *) args);
+        }
+
         LoopInfo &LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
 
         if(!LI.empty())
@@ -104,6 +110,8 @@ namespace octantis{
 
                 // Parsing the internal instructions
                 for (Instruction &I : BB) {
+                    errs()<< "Instruction passed: " << I << "\n";
+
                     ASAPScheduler.addNewInstruction(I);
                 }
             }

@@ -46,9 +46,10 @@ public:
     void AddInstructionToList(int &allocTime, int &lastModifTime, std::string op, int* const destReg, int* const src1Reg,
                               int * const src2Reg, int &loopFactor);
 
-    ///Function useful to put a new switch operation into the instructionList
-    void AddSwitchInstructionToList(int &allocTime, int &lastModifTime, std::string op, std::list<std::string> &switchList,
-                                    int* const destReg, int* const src1Reg, int * const src2Reg, int &loopFactor);
+    ///Function useful to put a new operation instruction into the instructionList with specifications
+    /// (e.g. input/output line and switch statement)
+    void AddInstructionToListWithSpecs(int &allocTime, int &lastModifTime, std::string op, std::list<std::string> &switchList,
+                                       int * const destReg, int * const src1Reg, int * const src2Reg, int &loopFactor);
 
     ///Function useful to put a new operation instruction into the instructionList in a specific position (identified another location "refPos")
     void AddInstructionToListAfterRefPos(int* const &refPos, int &allocTime, int &lastModifTime, std::string op, int* const destReg,
@@ -57,7 +58,7 @@ public:
     ///Function to add shift blocks inside an existing row
     /// NOTEs: Warning, here we lose important timing information!
     ///        Problem to solve in future updates!
-    void AddShiftToList(int * const &refPos, std::string op);
+    void AddSpecToList(int * const &refPos, std::string op);
 
     ///Function useful to put a new alloca instruction into the instructionList.
     ///Here the src1Reg is the name of the Alias of the allocated data: the load
@@ -83,6 +84,12 @@ public:
 
     ///Function to get the time in which the source information is available
     int getAvailableTime(int* const &srcReg);
+
+    ///Function to get the first operand of an instruction
+    int * getFirstOperand(int * const &srcReg);
+
+    ///Function to get the type of an intruction
+    std::string getType(int * const &srcReg);
 
 /*-----------------------------DEBUG FUNCTIONS-------------------------------*/
 

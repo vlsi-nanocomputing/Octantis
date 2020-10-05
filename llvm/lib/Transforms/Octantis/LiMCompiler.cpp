@@ -34,7 +34,7 @@ LiMCompiler::LiMCompiler(InstructionTable & ptrIT):zeroAddr(((ptrIT.instructionL
 
     errs() << "LiM Compiler, starting... ptrInstrList="<<ptrInstrList<<".\n\n";
 
-    //Iteration over the instruction listspecifications
+    //Iteration over the instruction list
     for (instrListIT=(*ptrInstrList).begin(); instrListIT!=(*ptrInstrList).end(); ++instrListIT) {
 
         //Initialization of the isShifts Flag
@@ -55,13 +55,17 @@ LiMCompiler::LiMCompiler(InstructionTable & ptrIT):zeroAddr(((ptrIT.instructionL
 
             //Add new load instruction to the MemArray (CHECK IF NECESSARY ALL THESE REFERENCES!)
             MemArray.addNewRow(instrListIT->destinationReg, type, parallelism); //The length of the LiM words has to be defined inside the
-                                                                                    //coniguration file.
+                                                                                //coniguration file.
 
             //Check if shift operations are present
             if(!(instrListIT->specifications).empty())
             {
-                std::string shiftType=(instrListIT->specifications).front();
-                MemArray.addLogicToRow(instrListIT->destinationReg, shiftType);
+                std::list<std::string>::iterator specsIT;
+                for(specsIT=(instrListIT->specifications).begin(); specsIT!=(instrListIT->specifications).end();++specsIT){
+
+                    std::string spec=*specsIT;
+                    MemArray.addLogicToRow(instrListIT->destinationReg, spec);
+                }
 
             }
 
