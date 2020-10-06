@@ -72,6 +72,7 @@ void SchedulingASAP::addNewInstruction(Instruction &I)
 
         int * parentReg;
         int index=0; //Default value for traditional load instructions (no array)
+        int arrayFactor=1; //Default value for the allocation of only one row (no array)
         bool inputLine=false; //Flag for the identification of input lines
 
         //Initialization of the accumulation detection structure
@@ -110,6 +111,13 @@ void SchedulingASAP::addNewInstruction(Instruction &I)
                     parentReg=infoAboutPtr.srcReg;
                     index=infoAboutPtr.index;
                     infoAboutPtr.valid=false;
+
+                    //Definition of the array dimensions. Assumption:
+                    //  ->arrayLength=NumIterLoop
+                    if(loopInfo.valid==true){
+                        arrayFactor=loopInfo.iterations;
+                    }
+
                 } else {
                     llvm_unreachable("Error in SchedulingASAP: load instruction after GEP refers to an unknown pointer.");
                 }
@@ -140,19 +148,13 @@ void SchedulingASAP::addNewInstruction(Instruction &I)
             //an input line
             if(inputLine==true){
 
-                int iterations=1;
                 std::list<std::string> tmpList;
                 tmpList.push_back("input_line");
-                IT.AddInstructionToListWithSpecs(Timer, Timer, I.getOpcodeName(), tmpList, (int *) &I, parentReg, nullptr,iterations);
-
-            } else if(loopInfo.valid==true && inputLine==false){
-
-                IT.AddInstructionToList(Timer, Timer, I.getOpcodeName(), (int *) &I, parentReg, nullptr, loopInfo.iterations);
+                IT.AddInstructionToListWithSpecs(Timer, Timer, I.getOpcodeName(), tmpList, (int *) &I, parentReg, nullptr,arrayFactor);
 
             } else {
 
-                int iterations=1;
-                IT.AddInstructionToList(Timer, Timer, I.getOpcodeName(), (int *) &I, parentReg, nullptr,iterations);
+                IT.AddInstructionToList(Timer, Timer, I.getOpcodeName(), (int *) &I, parentReg, nullptr, arrayFactor);
             }
 
             aliasMap.insert(std::pair<int * const, int * const>((int *)&I, parentReg)); //Check the order
@@ -238,9 +240,11 @@ void SchedulingASAP::addNewInstruction(Instruction &I)
 
             //Invalidate the signal for the shift (control signal)
             //and introduction of a new control signal inside the proper list
+
             controlSig=(int *) I.getOperand(1);
             IT.RemoveInstructionFromList(controlSig);
             IT.addControlSignal(controlSig);
+
 
             //Add shift operand inside the input row
             IT.AddSpecToList((int *)I.getOperand(0),I.getOpcodeName());

@@ -48,7 +48,7 @@ int InstructionTable::GetIteratorValue() {
 
 ///Function useful to put a new operation instruction into the instructionList
 void InstructionTable::AddInstructionToList(int &allocTime, int &lastModifTime, std::string op, int * const destReg,
-                                            int * const src1Reg, int * const src2Reg, int &loopFactor) {
+                                            int * const src1Reg, int * const src2Reg, int &arrayFactor) {
 
         //Temporary empty list
         std::list<std::string> tmpEmptyList;
@@ -62,7 +62,7 @@ void InstructionTable::AddInstructionToList(int &allocTime, int &lastModifTime, 
             destReg, //destinationReg
             src1Reg, //sourceReg1
             src2Reg, //sourceReg2
-            loopFactor //Number of loop iterations
+            arrayFactor //Number of loop iterations
         };
 
         //Push the new line inside the Instruction Table
@@ -73,7 +73,7 @@ void InstructionTable::AddInstructionToList(int &allocTime, int &lastModifTime, 
 /// (e.g. input/output line and switch statement)
 void InstructionTable::AddInstructionToListWithSpecs(int &allocTime, int &lastModifTime, std::string op,
                                                   std::list<std::string> &switchList, int* const destReg,
-                                                  int* const src1Reg, int * const src2Reg, int &loopFactor){
+                                                  int* const src1Reg, int * const src2Reg, int &arrayFactor){
 
     //Temporary structure to link inside the list
     instructionData tmpStruct = {
@@ -85,7 +85,7 @@ void InstructionTable::AddInstructionToListWithSpecs(int &allocTime, int &lastMo
         destReg, //destinationReg
         src1Reg, //sourceReg1
         src2Reg, //sourceReg2
-        loopFactor //Number of loop iterations
+        arrayFactor //Number of loop iterations
     };
 
     //Push the new line inside the Instruction Table
@@ -97,7 +97,7 @@ void InstructionTable::AddInstructionToListWithSpecs(int &allocTime, int &lastMo
 
 ///Function useful to put a new operation instruction into the instructionList in a specific position (identified another location "refPos")
 void InstructionTable::AddInstructionToListAfterRefPos(int* const &refPos, int &allocTime, int &lastModifTime, std::string op,
-                                                       int * const destReg, int * const src1Reg, int * const src2Reg, int &loopFactor){
+                                                       int * const destReg, int * const src1Reg, int * const src2Reg, int &arrayFactor){
 
         //Temporary empty list
         std::list<std::string> tmpEmptyList;
@@ -111,7 +111,7 @@ void InstructionTable::AddInstructionToListAfterRefPos(int* const &refPos, int &
             destReg, //destinationReg
             src1Reg, //sourceReg1
             src2Reg, //sourceReg2
-            loopFactor //Number of loop iterations
+            arrayFactor //Number of loop iterations
         };
 
         IListIt=getIteratorToElement(refPos);
@@ -354,7 +354,7 @@ void InstructionTable::printIT(){
         errs()<< IListIt->destinationReg << " ";
         errs()<< IListIt->sourceReg1 << " ";
         errs()<< IListIt->sourceReg2 << " ";
-        errs()<< IListIt->loopFactor << "\n";
+        errs()<< IListIt->arrayFactor << "\n";
 
         lineCount++;
     }

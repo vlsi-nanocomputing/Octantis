@@ -44,16 +44,16 @@ public:
 
     ///Function useful to put a new operation instruction into the instructionList
     void AddInstructionToList(int &allocTime, int &lastModifTime, std::string op, int* const destReg, int* const src1Reg,
-                              int * const src2Reg, int &loopFactor);
+                              int * const src2Reg, int &arrayFactor);
 
     ///Function useful to put a new operation instruction into the instructionList with specifications
     /// (e.g. input/output line and switch statement)
     void AddInstructionToListWithSpecs(int &allocTime, int &lastModifTime, std::string op, std::list<std::string> &switchList,
-                                       int * const destReg, int * const src1Reg, int * const src2Reg, int &loopFactor);
+                                       int * const destReg, int * const src1Reg, int * const src2Reg, int &arrayFactor);
 
     ///Function useful to put a new operation instruction into the instructionList in a specific position (identified another location "refPos")
     void AddInstructionToListAfterRefPos(int* const &refPos, int &allocTime, int &lastModifTime, std::string op, int* const destReg,
-                                         int* const src1Reg, int* const src2Reg, int &loopFactor);
+                                         int* const src1Reg, int* const src2Reg, int &arrayFactor);
 
     ///Function to add shift blocks inside an existing row
     /// NOTEs: Warning, here we lose important timing information!
@@ -112,7 +112,7 @@ public:
         int * destinationReg;
         int * sourceReg1;
         int * sourceReg2;
-        int loopFactor; //Number of allocation per instruction
+        int arrayFactor; //Number of allocation per instruction
     };
 
     ///Allocated data: they are typically inside the stack, so outside the memory.

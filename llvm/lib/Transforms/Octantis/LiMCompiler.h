@@ -41,6 +41,22 @@ private:
     ///for the generation of the lable for the new rows introduced inside the array.
     int * zeroAddr;
 
+    ///Map for storing the names associatd to the element of an array
+    std::map<int *, std::list<int *>> arrayNamesMap;
+
+    ///Iterator over the arrayNamesMap
+    std::map<int *, std::list<int *>>::iterator arrayNamesMapIT;
+
+private:
+    ///Function to update the arrayNamesMap
+    void addNewItem(int * const &origSrc, int * const &genName);
+
+    ///Function to find an element inside the arrayNamesMap
+    std::map<int*,std::list<int*>>::iterator findInANM(int * const &srcReg);
+
+    ///Function to get a new name for additional LiM rows
+    int * getNewName();
+
     //Function to find the position of an element inside the InstructionList
     //(It may be moved inside the InstructionTable class!)
   //  std::list<InstructionTable::instructionData>::iterator getIteratorToElement(int * position, std::list<InstructionTable::instructionData> * ptrIL);
