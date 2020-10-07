@@ -47,6 +47,12 @@ private:
     ///Iterator over the arrayNamesMap
     std::map<int *, std::list<int *>>::iterator arrayNamesMapIT;
 
+    ///Map for the organization of the operation of accumulation
+    std::list<int *> accumulationList;
+
+    ///Iterator over the accumulationList
+    std::list<int *>::iterator accumulationListIT;
+
 private:
     ///Function to update the arrayNamesMap
     void addNewItem(int * const &origSrc, int * const &genName);

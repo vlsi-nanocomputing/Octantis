@@ -10,6 +10,7 @@
 
 //Std Lib include files
 #include <string>
+#include <math.h>
 
 //Octantis Include Files
 #include "LiMCompiler.h"
@@ -165,10 +166,13 @@ LiMCompiler::LiMCompiler(InstructionTable & ptrIT):zeroAddr(((ptrIT.instructionL
             std::list<std::string>::iterator specsIT=find((instrListIT->specifications).begin(),
                                                           (instrListIT->specifications).end(),
                                                           "accumulation");
-            if(specsIT==(instrListIT->specifications).end())
+            if(specsIT!=(instrListIT->specifications).end())
             {
                 isAccumulation=true;
+                //Remove the label of accumulation inside the specs
+                (instrListIT->specifications).erase(specsIT);
             } else {
+
                 isAccumulation=false;
             }
 
@@ -206,133 +210,234 @@ LiMCompiler::LiMCompiler(InstructionTable & ptrIT):zeroAddr(((ptrIT.instructionL
             src2=instrListIT->sourceReg2;
             dest=instrListIT->destinationReg;
 
-            for (int loop = 0; loop < numIter; ++loop) {
+            if(isAccumulation){
 
-                //Assumption: if a vector is considered, at each iteration of the loop
-                //            a new index of the vector is taken into consideration.
-                //            So, possible operations are:
-                //              -> C[i]=B and A[i]
-                //              -> C[i]=B[i] and A[i]
+                errs() << "Starting the accumulation section...\n";
+
+                //Size of the input array
+                int arraySize;
+
+                //Number of the elaboration steps
+                int steps;
+
+                //Temporary variable for storing the generated LiM row names
+                int * tmpName;
+
+                //Iterators to access the accumulationList
+                std::list<int *>::iterator aListIT1;
+                std::list<int *>::iterator aListIT2;
+
+                //In case of accumulation the definition of the LiM Array is different
                 if(isSrc1Array){
-                     internalANMIT=findInANM(instrListIT->sourceReg1);
-                     regNameIT=(internalANMIT->second).begin();
-                     std::advance(regNameIT,loop);
-                     src1=*regNameIT;
-                }
-                if(isSrc2Array){
+
+                    internalANMIT=findInANM(instrListIT->sourceReg1);
+
+                } else if (isSrc2Array){
+
                     internalANMIT=findInANM(instrListIT->sourceReg2);
-                    regNameIT=(internalANMIT->second).begin();
-                    std::advance(regNameIT,loop);
-                    src2=*regNameIT;
-                }
-
-
-                if(MemArray.isLiMRowOfThisType(src2, instrListIT->operation)){
-                    //Check if one of the two operands has the same LiM type
-
-                    //sourceReg2 of the same type
-
-                    //Add new input connection for sourceReg2
-                    MemArray.addNewInputConnection(src2, src1);
-
-                    //Update the effective in for the destination register:
-                    effInForDestReg=src2;
-
-
-                } else if (MemArray.isLiMRowOfThisType(src1, instrListIT->operation)){
-                    //sourceReg1 of the same type
-
-                    //Add new input connection for sourceReg1
-                    MemArray.addNewInputConnection(src1, src2);
-
-                    //Update the effective in for the destination register:
-                    effInForDestReg=src1;
-
-
-                } else if(MemArray.changeLiMRowType(src2, instrListIT->operation, instrListIT->specifications)){
-                    //If the sourceReg2 is a normal memory row the function replaces its structure into LiM
-                    //whose type is defined by the operation that has to be performed.
-
-                    //Add new input connection for sourceReg1
-                    errs() << "\tChange LiM row performed!\n";
-                    MemArray.addNewInputConnection(src2, src1);
-
-                    //Update the available source register with the corresponding LiM structure (LIFO approach)
-                    effInForDestReg=src2;
-
-                } else if(MemArray.changeLiMRowType(src1, instrListIT->operation, instrListIT->specifications)){
-                    //Add new input connection for sourceReg1
-                    errs() << "\tChange LiM row performed!\n";
-                    MemArray.addNewInputConnection(src1, src2);
-
-                    //Update the available source register with the corresponding LiM structure (LIFO approach)
-                    effInForDestReg=src1;
 
                 } else {
-                    //It duplicates the original data into a new LiM row
+                    //An error occurred
+                    llvm_unreachable("Error in LiM Compiler: definition of an incorrect"
+                                     "operation of accumulation.\n");
+                }
 
-                    //Firstly, a new Load instruction is inserted inside the Instruction Table
-                    //to keep track of the time in which the allocation/copy is performed
+                //Extraction of the elements that have to be accumulated
+                for(std::list<int *>::iterator it=(internalANMIT->second).begin();
+                    it!=(internalANMIT->second).end(); ++it) {
 
-                    //Iterator to find the position of the source register (SRC1) which will be copied
-                    //      NOTEs: The procedure can be implemented directly inside the InstructionTable Class.
-                    std::list<InstructionTable::instructionData>::iterator ptrInstrListTmp;
-                    ptrInstrListTmp=ptrIT.getIteratorToElement(src1);
+                    accumulationList.push_back(*it);
 
-                    //Duplication of the Instruction Table row
-                    InstructionTable::instructionData dataStruct=*ptrInstrListTmp;
-                    dataStruct.destinationReg=getNewName();
-                    dataStruct.operation=(instrListIT->operation);
+                }
 
-                    //Insertion of the source LiM Row before the result one
-                    ptrIT.instructionList.insert(instrListIT,dataStruct);
+                //Estraction of the needed information
+                arraySize=accumulationList.size();
+                steps=ceil(log2((double)arraySize))+2;
 
-                    //Then, a new instance of the data is added inside the map describing the
-                    //LiM array: the new row is associated to the same key of the "parent" one
-                    //inside the map
+                //Loop for the allocation of the operations
+                for (int i = 0; i < steps; ++i) {
+
+                    aListIT1=accumulationList.begin();
+                    aListIT2=std::next(aListIT1,1);
+
+                    for (int j = 0; j < floor(arraySize/2); ++j) {
+
+                        if(MemArray.changeLiMRowType(*aListIT2, instrListIT->operation, instrListIT->specifications)){
+                                                //If the sourceReg2 is a normal memory row the function replaces its structure into LiM
+                                                //whose type is defined by the operation that has to be performed.
+
+                                                //Add new input connection for sourceReg1
+                                                errs() << "\tChange LiM row performed!\n";
+                                                MemArray.addNewInputConnection(*aListIT2, *aListIT1);
+
+                                                //Update the available source register with the corresponding LiM structure (LIFO approach)
+                                                effInForDestReg=*aListIT2;
+                        } else {
+                            //An error occurred
+                            llvm_unreachable("Error in LiM Compiler: temporary LiM row not modifiable.\n");
+                        }
+
+                        //Generation of a new row
+                        tmpName=getNewName();
+
+                        //Function to add a new LiM Row inside the array: partial result row
+                        MemArray.addNewResultRow(tmpName, parallelism, effInForDestReg);
+
+                        ////////////////DEBUG/////////////////////
+                        errs()<<"Content of the accumulationList:\n";
+                        for(std::list<int *>::iterator it=accumulationList.begin();
+                            it!=accumulationList.end(); ++it){
+                            errs()<< "\t" << *it << "\n";
+                        }
+                        errs() << "Elements pointed: " << *aListIT1 << " " << *aListIT2 <<"\n";
+                        //////////////////////////////////////////
+
+                        //Remove the two source LiM rows from the accumulationList
+                        aListIT2=accumulationList.erase(aListIT2);
+                        aListIT1=accumulationList.erase(aListIT1);
+
+                        //Add the generated row
+                        accumulationList.insert(aListIT1,tmpName);
+
+                        //Updating the iterator to the next position
+                        advance(aListIT2,1);
+
+                        //Update the size of the accumulationList
+                        arraySize=accumulationList.size();
+                    }
+                }
+
+            } else {
+                //Any other cases
+
+                for (int loop = 0; loop < numIter; ++loop) {
+
+                    //Assumption: if a vector is considered, at each iteration of the loop
+                    //            a new index of the vector is taken into consideration.
+                    //            So, possible operations are:
+                    //              -> C[i]=B and A[i]
+                    //              -> C[i]=B[i] and A[i]
+                    if(isSrc1Array){
+                         internalANMIT=findInANM(instrListIT->sourceReg1);
+                         regNameIT=(internalANMIT->second).begin();
+                         std::advance(regNameIT,loop);
+                         src1=*regNameIT;
+                    }
+                    if(isSrc2Array){
+                        internalANMIT=findInANM(instrListIT->sourceReg2);
+                        regNameIT=(internalANMIT->second).begin();
+                        std::advance(regNameIT,loop);
+                        src2=*regNameIT;
+                    }
+
+
+                    if(MemArray.isLiMRowOfThisType(src2, instrListIT->operation)){
+                        //Check if one of the two operands has the same LiM type
+
+                        //sourceReg2 of the same type
+
+                        //Add new input connection for sourceReg2
+                        MemArray.addNewInputConnection(src2, src1);
+
+                        //Update the effective in for the destination register:
+                        effInForDestReg=src2;
+
+
+                    } else if (MemArray.isLiMRowOfThisType(src1, instrListIT->operation)){
+                        //sourceReg1 of the same type
+
+                        //Add new input connection for sourceReg1
+                        MemArray.addNewInputConnection(src1, src2);
+
+                        //Update the effective in for the destination register:
+                        effInForDestReg=src1;
+
+
+                    } else if(MemArray.changeLiMRowType(src2, instrListIT->operation, instrListIT->specifications)){
+                        //If the sourceReg2 is a normal memory row the function replaces its structure into LiM
+                        //whose type is defined by the operation that has to be performed.
+
+                        //Add new input connection for sourceReg1
+                        errs() << "\tChange LiM row performed!\n";
+                        MemArray.addNewInputConnection(src2, src1);
+
+                        //Update the available source register with the corresponding LiM structure (LIFO approach)
+                        effInForDestReg=src2;
+
+                    } else if(MemArray.changeLiMRowType(src1, instrListIT->operation, instrListIT->specifications)){
+                        //Add new input connection for sourceReg1
+                        errs() << "\tChange LiM row performed!\n";
+                        MemArray.addNewInputConnection(src1, src2);
+
+                        //Update the available source register with the corresponding LiM structure (LIFO approach)
+                        effInForDestReg=src1;
+
+                    } else {
+                        //It duplicates the original data into a new LiM row
+
+                        //Firstly, a new Load instruction is inserted inside the Instruction Table
+                        //to keep track of the time in which the allocation/copy is performed
+
+                        //Iterator to find the position of the source register (SRC1) which will be copied
+                        //      NOTEs: The procedure can be implemented directly inside the InstructionTable Class.
+                        std::list<InstructionTable::instructionData>::iterator ptrInstrListTmp;
+                        ptrInstrListTmp=ptrIT.getIteratorToElement(src1);
+
+                        //Duplication of the Instruction Table row
+                        InstructionTable::instructionData dataStruct=*ptrInstrListTmp;
+                        dataStruct.destinationReg=getNewName();
+                        dataStruct.operation=(instrListIT->operation);
+
+                        //Insertion of the source LiM Row before the result one
+                        ptrIT.instructionList.insert(instrListIT,dataStruct);
+
+                        //Then, a new instance of the data is added inside the map describing the
+                        //LiM array: the new row is associated to the same key of the "parent" one
+                        //inside the map
+
+                        //Function to add a new LiM Row inside the array: partial result row
+                        MemArray.addNewLiMRow(effAddrDestReg, instrListIT->operation, instrListIT->specifications,
+                                              parallelism, src2);
+
+    //                  //Function to add a new LiM Row inside the array: partial result row
+    //                  MemArray.addNewLiMRow(instrListIT->destinationReg, instrListIT->operation, instrListIT->specifications,
+    //                                          parallelism, instrListIT->sourceReg2);
+
+                        //Update the address
+                        //effAddrDestReg=getNewName();
+
+
+
+
+                        ////////////DEBUG///////////
+                        if(!(instrListIT->specifications).empty())
+                        {
+                            errs()<< "Lim compiler: additional logic list not empty!\n";
+                        }
+                        /////////END DEBUG//////////
+
+                        //Allocate the instruction in time, inside the FSM
+                        FSMLim.addNewInstruction(instrListIT->allocTime, dest);
+
+                        //Define the effective destination register
+                        effInForDestReg=dest;
+
+                        //Advance the iterator by one position to come back to the result register
+                        std::advance(instrListIT,1);
+                    }
+
+                    //The default value is associated to the declared one
+                    //effAddrDestReg=instrListIT->destinationReg;
+
+                    //errs() << "Generated: " << effAddrDestReg << "\n";
 
                     //Function to add a new LiM Row inside the array: partial result row
-                    MemArray.addNewLiMRow(effAddrDestReg, instrListIT->operation, instrListIT->specifications,
-                                          parallelism, src2);
-
-//                  //Function to add a new LiM Row inside the array: partial result row
-//                  MemArray.addNewLiMRow(instrListIT->destinationReg, instrListIT->operation, instrListIT->specifications,
-//                                          parallelism, instrListIT->sourceReg2);
+                    MemArray.addNewResultRow(effAddrDestReg, parallelism, effInForDestReg);
 
                     //Update the address
                     //effAddrDestReg=getNewName();
 
-
-
-
-                    ////////////DEBUG///////////
-                    if(!(instrListIT->specifications).empty())
-                    {
-                        errs()<< "Lim compiler: additional logic list not empty!\n";
-                    }
-                    /////////END DEBUG//////////
-
-                    //Allocate the instruction in time, inside the FSM
-                    FSMLim.addNewInstruction(instrListIT->allocTime, dest);
-
-                    //Define the effective destination register
-                    effInForDestReg=dest;
-
-                    //Advance the iterator by one position to come back to the result register
-                    std::advance(instrListIT,1);
                 }
-
-                //The default value is associated to the declared one
-                //effAddrDestReg=instrListIT->destinationReg;
-
-                //errs() << "Generated: " << effAddrDestReg << "\n";
-
-                //Function to add a new LiM Row inside the array: partial result row
-                MemArray.addNewResultRow(effAddrDestReg, parallelism, effInForDestReg);
-
-                //Update the address
-                //effAddrDestReg=getNewName();
-
             }
 
         } else {
