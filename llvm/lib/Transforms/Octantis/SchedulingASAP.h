@@ -33,8 +33,13 @@ public:
         alloc, //Alloca is a keyword
         load,
         store,
-        binary,
+        binary, //Also shift right/left
         ret,
+        ptr,
+        swi, //Switch instruction
+        branch,
+        icmp,
+        sext, //Sign extension
         unknown
     };
 
@@ -65,6 +70,15 @@ public:
     ///Function to return the pointer to the Instruction Table
     InstructionTable & getIT();
 
+    ///Function to parse Loops information
+    void parseLoopInfo(BasicBlock &BB);
+
+    ///Function to know if a basic block is the last one belonging to a loop
+    bool isTheLastBBInLoop(BasicBlock &BB);
+
+    ///Function to terminate the scheduling of loop instructions
+    void endOfCurrentLoop();
+
 
 /*-----------------------------DEBUG FUNCTIONS-------------------------------*/
 
@@ -79,11 +93,82 @@ private:
     ///Fuction to change the parent type in negative logic and to update the correct destReg
     void changeParentInNOT(int * const parentName, std::string operation, int * const newParentName);
 
+//    ///Function to detect an accumulation inside a loop
+//    bool isAccumulation(Instruction &I); //Future Update!
+
 private:
     ///Object useful for defining the modified version of a
     /// specific logic operator
     AdditionalLogicPorts changeLogic;
 
+private:
+    /// Structure useful to store tmp information
+    /// about the index of the array parsed
+    struct indexStruct{
+        int * ptrName;
+        int * srcReg;
+        int index;
+        bool valid=false; //A getElementPtr instruction is parsed
+    } infoAboutPtr;
+
+    /// Structure useful to store tmp information
+    /// about switch statements
+    struct switchStruct{
+        int * destReg=nullptr;
+        int * srcReg1=nullptr;
+        int * srcReg2=nullptr;
+        int numOfCases;
+        std::list<std::string> operators; //The order is important for the
+                                          //ident. of MUX position.
+        bool valid=false; //Useful to check if it is the first case of a switch
+    };
+
+private:
+
+    ///Structure for storing the information of loops (if any)
+    struct loopInfoStruct{
+        int * loopHeader;
+        int * loopBody;
+        int * loopTerm;
+        int iterations;
+        bool valid=false;
+    }loopInfo;
+
+    ///Structure for storing the information of accumulations (if any)
+    /// NOTEs: It has to be removed in the future updates.
+    struct accumulationInfoStruct{
+        int * srcReg;
+        int validityCnt; //The sequence to indentify is load, add, store
+                           //(+1 if an element of the sequence is correct,
+                           // -1 otherwise)
+        bool valid=false;
+    }accumulationInfo;
+
+private:
+    /// List of the invalid basic block (useful after analyzing the
+    /// switch cases)
+    std::list<int *> invalidBB;
+
+    /// Iterator over the invalidBB list
+    std::list<int *>::iterator invalidBBIT;
+
+    /// List of the input parameters
+    std::list<int *> inputFunctParam;
+
+    /// Iterator over the inputFunctParam list
+    std::list<int *>::iterator inputFunctParamIT;
+
+public:
+    /// Fuction useful to define if a basic block is valid (switch
+    /// cases)
+    bool isBBValid(BasicBlock &bb);
+
+    /// Function useful to set a basic block as not valid (loop
+    /// case)
+    void setBBAsNotValid(BasicBlock &bb);
+
+    ///Function to add a new input parameter for a function
+    void addFuncInputParameter(int * const &inParam);
 
 
 public:
@@ -100,6 +185,21 @@ private:
 
     /// Iterator over aliases map
     std::map<int * const, int * const>::iterator aliasMapIT;
+
+    /// Map useful for keeping track of the variables usefulf
+    /// to implement iterators (like in loops)
+    std::map<int * const, int> itVariablesMap;
+
+    /// Iterator over the itVariablesMap
+    std::map<int * const, int>::iterator itVariablesMapIT;
+
+    /// Map for storing the temporary index for accessing
+    /// an array
+    //std::map<int * const, int> arrayIndexList;
+
+    /// Iterator over arrayIndexList
+    //std::map<int * const, int>::iterator arrayIndexListIT;
+
 };
 
 } //End of Octantis' namespace

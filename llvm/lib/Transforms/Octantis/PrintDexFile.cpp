@@ -12,6 +12,16 @@
 
 // Standard C++ Include Files
 #include <cmath>
+#include <iostream>
+#include <fstream>
+#include <system_error>
+
+//Debug
+#include <stdexcept>
+
+//LLVM include files
+#include "llvm/Support/FileSystem.h"
+#include "llvm/Support/ErrorHandling.h"
 
 using namespace octantis;
 using namespace llvm;
@@ -19,15 +29,42 @@ using namespace llvm;
 /// It prints the .dex file
 void PrintDexFile::print(){
 
-    printConstants();
-    printInit();
-    printLim();
-    printMap();//Outside logic, not implemented
-    printInstructions();
+    //Definition of the Output file
+//    std::error_code ErrorInfo;
+//    std::string outFileName = "config.dex";
+//    raw_fd_ostream outFile(outFileName.c_str(), ErrorInfo, llvm::sys::fs::OF_None);
+
+//    if (ErrorInfo) {
+//        errs() << "Error during the opening of the output file: " << ErrorInfo.message() << '\n';
+//        llvm_unreachable("Error in PrintDexFile: unable to create the .dex output file.");
+//    }
+
+    //////////////ONLY FOR DEBUG PURPOSES///////////////
+    std::string outFileName_scheleton = "config.dex";
+    std::string outFileName_LiMMap = "config_Map.dex";
+    Output.open(outFileName_scheleton,std::fstream::out);
+    OutputLiMMap.open(outFileName_LiMMap,std::fstream::out);
+    ////////////////////////////////////////////////////
+
+    //Printing the content of the different sections:
+      printConstants();
+      printInit();
+      printLim();
+//    printMap();//Outside logic, not implemented
+    //printInstructions();
 
     //Add the remaining sections!
 
+    //Printing the results of the synthesis process
+   // outFile << Output.str();
+//    outFile.close();
 
+      //////////////ONLY FOR DEBUG PURPOSES///////////////
+      Output.close();
+      OutputLiMMap.close();
+      ////////////////////////////////////////////////////
+
+    errs() << "Octantis finished the synthesis process with NO ERROR. Goodbye!\n\n";
 }
 
 /// It prints the Constants section
@@ -94,7 +131,9 @@ void PrintDexFile::printLim(){
     //Read the LiM Array and print the associated code
     for(limArrayIT=((*compArray).limArray).begin();limArrayIT!=((*compArray).limArray).end();++limArrayIT){
 
+        errs() << "LimArray cycle.\n";
         identifyLIMRowAndPrint(currentRow, &limArrayIT);
+        ++currentRow;
     }
 
     Output << "\tend cells\n\n";
@@ -105,7 +144,7 @@ void PrintDexFile::printLim(){
     Output << "\tbegin map\n\n";
 
     //The Map section has been already defined
-    Output << OutputLiMMap.str();
+//    Output << OutputLiMMap.str();
 
     Output << "\tend map\n\n";
     //END MAP REGION/////////////////////////////////////////
@@ -224,15 +263,25 @@ void PrintDexFile::getNameAndIndexOfSourceRow(int* const &sourceRow, std::string
 
     if(namesMapIT!=namesMap.end())
     {
-        sourceCellName=(namesMapIT->second).name;
+        std::string sourceName=(namesMapIT->second).name;
+
+        //Check if the source cell is MIXED Type
+        auto position = sourceName.find("Mux");
+        if(position != std::string::npos){
+
+            sourceName = "Mux";
+        }
+
+        sourceCellName=sourceName;
         sourceCellRow=(namesMapIT->second).rowIndex;
     } else {
         llvm_unreachable("Error in PrintDexFile: Reference to namesMap NOT VALID.");
     }
 }
 
-/// It inserts a new element inside the the namesMap
+/// It inserts a new element inside the namesMap
 void PrintDexFile::insertNamesMap(int* const &rowName, std::string cellName, int &cellRow){
+    errs() << "Data passed: " << rowName << ", cellName " <<cellRow << "\n";
     nameAndIndex structTmp={cellName, cellRow};
     namesMap.insert({rowName, structTmp});
 }
@@ -251,13 +300,28 @@ void PrintDexFile::identifyLIMRowAndPrint(int &currentRow, std::map<int * const,
 
     std::map<std::string, std::string>::const_iterator OpImplIT=LimOperations.find(((*mapIT)->second).rowType);
 
+    errs()<< "The data from the Map are: " << ((*mapIT)->second).rowType <<"\n";
     if(OpImplIT!=LimOperations.end())
     {
+        errs()<<"Here we are!\n";
         opType=OpImplIT->second;
+
 
         if(opType=="null")
         {
-            addDataRow(currentRow, rowName);
+            errs() << "A load operation is considered!\n";
+
+            //Check if there are input operands
+            if((((*mapIT)->second).inputConnections).empty())
+            {
+                //Source memory row
+                addDataRow(currentRow, rowName, nullptr);
+
+            } else {
+                //Result memory row
+                addDataRow(currentRow, rowName, (((*mapIT)->second).inputConnections).front());
+
+            }
 
         } else if(opType=="bitwise"){
 
@@ -265,6 +329,11 @@ void PrintDexFile::identifyLIMRowAndPrint(int &currentRow, std::map<int * const,
             {
                 printBITWISEMux2to1(((*mapIT)->second).rowType, currentRow, rowName,
                                     (((*mapIT)->second).inputConnections).front(), (((*mapIT)->second).inputConnections).back());
+
+            } else if (((*mapIT)->second).rowType=="switch"){
+
+                printMIXED(((*mapIT)->second).rowType, currentRow, rowName,(((*mapIT)->second).inputConnections).front(),
+                           ((*mapIT)->second).additionalLogic);
 
             } else {
 
@@ -294,8 +363,43 @@ void PrintDexFile::identifyLIMRowAndPrint(int &currentRow, std::map<int * const,
 }
 
 /// It is invoked when a normal memory row is declared: CHECK THE TYPE!
-void PrintDexFile::addDataRow(int &currentRow, int* const &nameRow){
-    insertNamesMap(nameRow, "Load", currentRow);
+void PrintDexFile::addDataRow(int &currentRow, int* const &nameRow, int* const &nameSrc){
+
+    //Name of the Output pin of the source row (if any)
+    std::string outSrc;
+
+    std::string sourceCells;
+    int sourceCellsBaseIndex;
+
+    //Update the NamesMap
+    insertNamesMap(nameRow, "Memory", currentRow);
+
+    if(nameSrc!=nullptr){
+        //Result row
+        getNameAndIndexOfSourceRow(nameSrc, sourceCells, sourceCellsBaseIndex);
+
+        //Check if the source cells are FAs/HAs:
+        getOutPinName(sourceCells, outSrc);
+
+        //Also here the parallelism should refer to
+        //a configuration file
+        for(int i=0; i<32; ++i){
+
+            //Map Section
+            OutputLiMMap << "\t\t" << sourceCells << "("
+                         << sourceCellsBaseIndex << ","
+                         << i << ")." << outSrc
+                         << " -> Memory(" << currentRow
+                         << "," << i << ").WR\n";
+        }
+
+    } else {
+        //Source row
+        //Nothing is done!
+    }
+
+
+
 }
 
 /// It prints the correct code for any BITWISE lim cell
@@ -409,8 +513,94 @@ void PrintDexFile::printADD(int &currentRow, int* const &nameRow, int* const &na
 
 }
 
+/// It prints the correct code for any MIXED lim cell
+void PrintDexFile::printMIXED(std::string &bitwiseOp, int &currentRow, int* const &nameRow,
+                              int* const &nameSrc, std::list<std::string> &operators){
+
+    // Support variable to store the Upper case string of bitwiseOp
+    std::string implementedCell;
+
+    // Support variable to store the row name
+    std::string rowName="Mux_";
+
+    //Out mux dimension
+    int muxDimension=operators.size();
+
+    //Counter for mux inputs
+    int muxCount=0;
+
+    if((muxDimension & (muxDimension-1))!=0)
+    {
+        //Error in the definition of the input mux: not a power of two!
+        llvm_unreachable("Error in PrintDexFile: the mux of the LiM row is not properly defined!");
+    }
+
+    //Name of the Output pin of the source row
+    std::string outSrc;
+
+    std::string sourceCells;
+    int sourceCellsBaseIndex;
+
+    getNameAndIndexOfSourceRow(nameSrc, sourceCells, sourceCellsBaseIndex);
+
+    //Check if the source cells are FAs/HAs:
+    getOutPinName(sourceCells, outSrc);
+
+    //Also here the parallelism should refer to
+    //a configuration file
+    for(int i=0; i<31; ++i){
+
+        //If the first MSB is considered
+        if(i==0){
+
+            //Definition of the name of the row (concat of the operators at the input of the mux)
+            for(std::list<std::string>::iterator tmpIT=operators.begin(); tmpIT!=operators.end(); ++tmpIT)
+            {
+                rowName=rowName+(*tmpIT);
+                if(tmpIT!=std::next(operators.end(), -1))
+                {
+                    rowName=rowName+"_";
+                }
+            }
+            insertNamesMap(nameRow, rowName, currentRow);
+        }
+
+        //Cells Section
+        for(std::list<std::string>::iterator tmpIT=operators.begin(); tmpIT!=operators.end(); ++tmpIT)
+        {
+            implementedCell=*tmpIT;
+
+            //Impose Upper case conditon to implementedCell
+            transform(implementedCell.begin(), implementedCell.end(), implementedCell.begin(), ::toupper);
+
+            Output << "\t\t" << implementedCell << " "
+                   << *tmpIT << "(2) -> Cell(" << currentRow
+                   << "," << i << ")\n";
+
+            //Map Section up to mux input
+            OutputLiMMap << "\t\tMemory(" << currentRow
+                         << "," << i << ").RD -> " << *tmpIT << "("
+                         << currentRow << "," << i << ").IN0\n";
+            OutputLiMMap << "\t\t" << sourceCells << "("
+                         << sourceCellsBaseIndex << ","
+                         << i << ")." << outSrc << " -> " << *tmpIT
+                         << "(" << currentRow << "," << i << ").IN1\n";
+            OutputLiMMap <<"\t\t" << *tmpIT << "(" << currentRow << ","
+                         << i << ").OUT0 -> Mux(" << currentRow
+                         << "," << i << ").IN" << muxCount << "\n";
+        }
+
+        //Definition of the output multiplexer
+        Output << "\t\tMUX Mux(" << muxDimension << ",1," << log2(muxDimension)
+               << ") -> Cell(" << currentRow << "," << i << ")\n";
+
+    }
+
+}
+
 /// It prints the correct code for any BITWISE lim cell with a 2to1 mux in input
 /// so that 2 input bits for the logic are available.
+///     (NOTE:Check the definition of the multiplexer!)
 void PrintDexFile::printBITWISEMux2to1(std::string &bitwiseOp, int &currentRow, int* const &nameRow, int* const &nameSrc1, int* const &nameSrc2){
 
     // Support variable to store the Upper case string of bitwiseOp
@@ -449,7 +639,7 @@ void PrintDexFile::printBITWISEMux2to1(std::string &bitwiseOp, int &currentRow, 
         Output << "\t\t" << implementedCell << " "
                << bitwiseOp << "(2) -> Cell(" << currentRow
                << "," << i << ")\n";
-        Output << "\t\tMUX Mux(2,1,2) -> Cell(" << currentRow
+        Output << "\t\tMUX Mux(2,1,1) -> Cell(" << currentRow
                << "," << i << ")\n";
 
         //Map Section
@@ -508,7 +698,7 @@ void PrintDexFile::printADDMux2to1(int &currentRow, int* const &nameRow, int* co
         //Cells Section
         Output << "\t\tFA Fa -> Cell(" << currentRow
                << "," << i << ")\n";
-        Output << "\t\tMUX Mux(2,1,2) -> Cell(" << currentRow
+        Output << "\t\tMUX Mux(2,1,1) -> Cell(" << currentRow
                << "," << i << ")\n";
 
         //Map Section
@@ -558,6 +748,12 @@ void PrintDexFile::printADDMux2to1(int &currentRow, int* const &nameRow, int* co
                  << i << ")." << outSrc2 << " -> Mux("
                  << currentRow << "," << i
                  << ").IN1\n";
+}
+
+/// It prints the correct code for any MIXED lim cell with a 2to1 mux in input
+void PrintDexFile::printMIXEDMux2to1(int &currentRow, int * const &nameRow, int* const &nameSrc1, int* const &nameSrc2,
+                                     std::list<std::string> &operators){
+
 }
 
 /// It returns the correct out pin name of opSrc row:

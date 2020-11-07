@@ -28,16 +28,19 @@ public:
     void addNewRow(int* const & rowName, std::string &rowType, int &rowLength);
 
     ///Function to add a new LiM Row inside the array: LiM row
-    void addNewLiMRow(int* const &rowName, std::string &rowType, int &rowLength, int* const &src);
+    void addNewLiMRow(int* const &rowName, std::string &rowType, std::list<std::string> &addLogic, int &rowLength, int* const &src);
 
     ///Function to add a new LiM Row inside the array: partial result row
     void addNewResultRow(int* const &rowName, int &rowLength, int* const &src1);
 
     ///Function to change the type of a LiM row
-    bool changeLiMRowType(int* const &rowName, std::string &newRowType);
+    bool changeLiMRowType(int* const &rowName, std::string &newRowType, std::list<std::string> &additionalOperators);
 
     ///Function to add a new input connection to a LiM row
     void addNewInputConnection(int* const &rowName, int* const &srcRowName);
+
+    ///Function to add logic inside a specific LiM row
+    void addLogicToRow(int * const &rowName, std::string &additionalLogicType);
 
     ///Function to know if a memory row has the same type requested
     bool isLiMRowOfThisType(int* const &rowName, std::string &type);
@@ -53,6 +56,7 @@ public:
         std::string rowType; //This can be optimized considering enum
         int rowLength;
         std::list<int *> inputConnections;
+        std::list<std::string> additionalLogic;
         //It can be useful also the output connections: an output mux may be necessary in case
         //of LiM cells! Maybe not: The LiM cell is automatically provided with an output mux!
     };
