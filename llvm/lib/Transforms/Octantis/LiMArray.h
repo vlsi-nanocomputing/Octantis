@@ -5,6 +5,7 @@
 /*-------------------------------------------- Licence ---------------------------------------------*/
 //
 // © Andrea Marchesin 2020 (andrea.marchesin@studenti.polito.it) for Politecnico di Torino
+// © Alessio Nicola 2021 (alessio.nicola@studenti.polito.it) for Politecnico di Torino
 //
 /*--------------------------------------------------------------------------------------------------*/
 #ifndef LIMARRAY_H
@@ -24,7 +25,8 @@ public:
     ///Default constructor
     LiMArray();
 
-    ///Function to add a new LiM Row inside the array: LiM row
+    ///Function to add a new memory Row inside the array
+    ///      NOTEs: The type is not essential, its default value should be "load"
     void addNewRow(int* const & rowName, std::string &rowType, int &rowLength);
 
     ///Function to add a new LiM Row inside the array: LiM row

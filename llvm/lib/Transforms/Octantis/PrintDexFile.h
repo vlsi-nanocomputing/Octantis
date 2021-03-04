@@ -5,9 +5,10 @@
 //
 /*-------------------------------------------- Licence ---------------------------------------------*/
 //
-// © Andrea Marchesin 2020 (andrea.marchesin@studenti.polito.it) for Politecnico di Torino
+// © Alessio Nicola 2021 (alessio.nicola@studenti.polito.it) for Politecnico di Torino
 //
 /*--------------------------------------------------------------------------------------------------*/
+
 #ifndef PRINTDEXFILE_H
 #define PRINTDEXFILE_H
 
@@ -19,27 +20,19 @@
 #include "OperationsImplemented.h"
 #include "LiMArray.h"
 
-//Standard C++ Include Libraries
-#include <sstream>
-#include <map>
-#include <string>
-#include <iterator>
-#include <set>
-
-//For debug purposes
-#include <fstream>
+// Standard C++ Include Libraries
+//#include <map>
+//#include <iterator>
 
 using namespace llvm;
 
-namespace octantis{
+namespace octantis
+{
 
-///Class class useful for the definition of Dexima's configuration file (.dex).
+/// Class useful for the definition of Dexima's configuration file (.dex).
 class PrintDexFile
 {
 public:
-//    PrintDexFile(LiMArray *compArray, FiniteStateMachine *compFSM, raw_ostream *OStream):
-//        compArray(compArray), compFSM(compFSM), OStream(OStream){};
-
     PrintDexFile(LiMArray *compArray, FiniteStateMachine *compFSM):
         compArray(compArray), compFSM(compFSM){};
 
@@ -47,7 +40,6 @@ public:
     void print();
 
 private:
-
     /// Structure useful for the namesMap
     struct nameAndIndex{
         std::string name;
@@ -62,7 +54,7 @@ private:
     void printInit();
 
     /// It prints the Lim section
-    void printLim();
+    void printLiM();
 
     /// It prints the Map section
     void printMap();
@@ -71,82 +63,91 @@ private:
     void printInstructions();
 
     /// It prints the Code section
-    void printCode();
+    void printCode(std::string &outCodeName);
 
-    /// It generates the unique name for the each component: FUTURE IMPLEMENTATION
-//    int getIndex(std::string operation);
-
-    /// It identifies the kind of LiM row and print the corresponding code
-    void identifyLIMRowAndPrint(int &currentRow, std::map<int * const, LiMArray::LiMRow>::iterator * mapIT);
+    /// It identifies the kind of LiM row and print the code
+    void identifyLIMRowAndPrint(int &currentRow,
+        std::map<int * const, LiMArray::LiMRow>::iterator * mapIT);
 
     /// It is invoked when a normal memory row is declared
     void addDataRow(int &currentRow, int* const &nameRow, int * const &nameSrc);
 
-    /// It prints the correct code for any BITWISE lim cell
-    void printBITWISE(std::string &bitwiseOp, int &currentRow, int* const &nameRow, int* const &nameSrc);
-
-    /// It prints the correct code for an SUM lim cell
-    void printADD(int &currentRow, int* const &nameRow, int* const &nameSrc);
-
-    /// It prints the correct code for any MIXED lim cell
-    void printMIXED(std::string &bitwiseOp, int &currentRow, int * const &nameRow, int* const &nameSrc, std::list<std::string> &operators);
-
-    /// It prints the correct code for any BITWISE lim cell with a 2to1 mux in input
-    /// so that 2 input bits for the logic are available.
-    void printBITWISEMux2to1(std::string &bitwiseOp, int &currentRow, int* const &nameRow, int* const &nameSrc1, int* const &nameSrc2);
-
-    /// It prints the correct code for an SUM lim cell with a 2to1 mux in input
-    /// so that 2 input bits for the logic are available.
-    void printADDMux2to1(int &currentRow, int* const &nameRow, int* const &nameSrc1, int* const &nameSrc2);
-
-    /// It prints the correct code for any MIXED lim cell with a 2to1 mux in input
-    void printMIXEDMux2to1(int &currentRow, int * const &nameRow, int* const &nameSrc1, int* const &nameSrc2,
-                           std::list<std::string> &operators);
-
-    /// It prints the correct code for an SUB lim cell
-//    void printSUB(int * currentRow, int **nameRow, int **nameSrc);
+    /// It inserts a new element inside the the namesMap
+    void insertNamesMap(int* const &rowName, std::string cellName, int &cellRow);
 
     /// It modifies the passed parameters (name and index) to return
     /// the requested information
-    void getNameAndIndexOfSourceRow(int* const &sourceRow, std::string &sourceCellName, int &sourceCellRow);
-
-    /// It inserts a new element inside the the namesMap
-    void insertNamesMap(int* const &rowName, std::string cellName, int &cellRow);
+    void getNameAndIndexOfSourceRow(int* const &sourceRow,
+        std::string &sourceCellName, int &sourceCellRow);
 
     /// It returns the correct out pin name of opSrc row:
     /// it's useful for the identification of the output pin name
     /// of the row in case of is an Arithmetic Operation.
     void getOutPinName(std::string &opSrc, std::string &outPinName);
 
+    /// It prints the correct code for any BITWISE lim cell with a 2to1 mux in input
+    /// so that 2 input bits for the logic are available.
+    void printBITWISEMux2to1(std::string &bitwiseOp, int &currentRow,
+        int* const &nameRow, int* const &nameSrc1, int* const &nameSrc2);
+
+    /// It prints the correct code for any MIXED lim cell
+    void printMIXED(std::string &bitwiseOp, int &currentRow, int * const &nameRow,
+        int* const &nameSrc, std::list<std::string> &operators);
+
+    /// It prints the correct code for any BITWISE lim cell
+    void printBITWISE(std::string &bitwiseOp, int &currentRow, int* const &nameRow,
+        int* const &nameSrc);
+
+    /// It prints the correct code for an SUM lim cell with a 2to1 mux in input
+    /// so that 2 input bits for the logic are available.
+    void printADDMux2to1(int &currentRow, int* const &nameRow,
+        int* const &nameSrc1, int* const &nameSrc2);
+
+    /// It prints the correct code for an SUM lim cell
+    void printADD(int &currentRow, int* const &nameRow, int* const &nameSrc);
+
+    /// It merges the source file into the destination file
+    /// The source file is closed if closeSource is true
+    void mergeToOutFile(raw_fd_ostream *destFD, raw_fd_ostream *sourceFD,
+        std::string &sourceName, bool closeSourceFD);
+
+    /// It reads the instructions and checks if the instruction is related
+    /// to the end of critical path
+    void powerPathSection();
+
+    /// It identifies the kind of LiM and prints the power and path section
+    void printPowerPathSection();
+
+    /// It prints the correct code for any BITWISE lim cell in Power and Path Section
+    void printBITWISEPowerPath(int &cellIndexWrite,  int* const &nameRow,
+        int* const &nameSrc);
+
+    /// It prints the correct code for any BITWISE lim cell in Power and Path section
+    /// with a 2to1 mux in input so that 2 input bits for the logic are available.
+    ///     (NOTE:Check the definition of the multiplexer!)
+    void printBITWISEMux2to1PowerPath(int &cellIndexWrite,
+        int* const &nameRow, int* const &nameSrc1, int* const &nameSrc2);
+
+    /// It prints the correct code for an SUM lim cell in Power and Path section
+    void printADDPowerPath(int &cellIndexWrite, int* const &nameRow,
+        int* const &nameSrc);
+
+    /// It prints the correct code for an SUM lim cell in Power and Path section
+    /// with a 2to1 mux in input so that 2 input bits for the logic are available.
+    void printADDMux2to1PowerPath(int &cellIndexWrite, int* const &nameRow,
+        int* const &nameSrc1, int* const &nameSrc2);
+
 private:
     /// Backup variables for the LiM Array and the Operations implemented
-    LiMArray * compArray;
-    FiniteStateMachine * compFSM;
+    LiMArray *compArray;
+    FiniteStateMachine *compFSM;
 
-    ///Iterators over LiMArray and FiniteStateMachine
-    ///Iterator over LiM Array
+    /// Iterator over LiM Array
     std::map<int * const, LiMArray::LiMRow>::iterator limArrayIT;
     std::map<int, std::list<int *>>::iterator FSMIT;
 
     ///Iterator over the list of <int *> of the FSM
     std::list <int *>::iterator FSM_ListIT;
-
-
-    /// Variables useful for the redirection of the output to .dex file
-    ///     (NOTE: To implement the raw_ostream!)
-//      raw_ostream & OStream;
-//      raw_ostream & Output;
-        std::fstream Output;
-
-
-    ///The following streams are useful to define in parallel all the
-    ///sections of the .dex file. At the end, they are merged with Output.
-    ///     (NOTE: To implement the raw_ostream!)
-        std::fstream OutputLiMMap;
-//        raw_ostream & OutputLiMMap;
-//        raw_ostream & OutputInstructions;
-//        raw_ostream & OutputCode;
-
 
     ///Map useful to keep track of the name associated to each LiM row:
     ///the name of the first MSB is stored (Here we assume that all the
@@ -156,12 +157,19 @@ private:
     ///Iterator over the namesMap
     std::map <int * const, nameAndIndex>::iterator namesMapIT;
 
-    //Map to keep track of the indexes of each kind of component and its iterator
-    //std::map <std::string, int> componentCnt;
-    //std::map <std::string, int>::iterator componentCntIT;
+    ///The following file descriptors are useful to define in parallel all the
+    ///sections of the .dex file. At the end, they are merged with Output.
+    raw_fd_ostream *outFile;
+    raw_fd_ostream *outLiMMap;
+    raw_fd_ostream *outInstr;
+    raw_fd_ostream *outInstrPower;
+    raw_fd_ostream *outInstrPath;
+    raw_fd_ostream *outCode;
 
+    //The parallelism should refer to a configuration file
+    int par=32;
 };
 
-} //End Octantis namespace
+} // namespace octantis
 
 #endif // PRINTDEXFILE_H

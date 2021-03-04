@@ -5,7 +5,8 @@
 /*-------------------------------------------- Licence ---------------------------------------------*/
 //
 // © Andrea Marchesin 2020 (andrea.marchesin@studenti.polito.it) for Politecnico di Torino
-//
+// © Alessio Nicola 2021 (alessio.nicola@studenti.polito.it) for Politecnico di Torino
+// 
 /*--------------------------------------------------------------------------------------------------*/
 #include "LiMArray.h"
 
@@ -31,6 +32,11 @@ void LiMArray::addNewRow(int* const &rowName, std::string &rowType, int &rowLeng
     LiMRow tmpRow;
     tmpRow.rowType=rowType;
     tmpRow.rowLength=rowLength;
+
+    // The first element of the list is dedicated only for Memory input
+    // 0xDEF => Cell with NO memory input
+    // It is convenient to distinguish from real memory input cell (multiple of 4)
+    tmpRow.inputConnections.push_back((int*)0xdef);
 
     limArray.insert({rowName,tmpRow});
 
@@ -141,8 +147,8 @@ void LiMArray::addNewInputConnection(int* const &rowName, int* const &srcRowName
     std::list<int *> * connectionsList=&(limArrayIntIT->second.inputConnections);
 
     //Add the new input connection
-    if((*connectionsList).size()==0 || find((*connectionsList).begin(), (*connectionsList).end(),
-                                          srcRowName) != (*connectionsList).end()){
+    if((*connectionsList).size()==1 || find((*connectionsList).begin(), (*connectionsList).end(),
+                                          srcRowName) == (*connectionsList).end()){
         //errs() << "\taddNewInputConnection: source not found!\n";
         (*connectionsList).push_back(srcRowName);
     } else {
@@ -223,9 +229,13 @@ void LiMArray::printLiMArray(){
             }
 
 
-            errs() << "inputs ";
+            errs() << "inputs\t";
             for(inList=((limArrayDebugIT->second).inputConnections).begin();inList!=((limArrayDebugIT->second).inputConnections).end(); ++inList){
-                errs() << *inList << ", ";
+                errs() << *inList;
+                if(inList == ((limArrayDebugIT->second).inputConnections).begin())
+                    errs() << " \t";
+                else
+                    errs() << " ";
             }
 
             errs() << "\n";
