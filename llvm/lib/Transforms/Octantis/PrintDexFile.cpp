@@ -60,7 +60,7 @@ void PrintDexFile::print(){
     
     (*outFile).close();
 
-    errs() << "Octantis finished the synthesis process. Goodbye!\n\n";
+    errs() << "Octantis: end synthesis process. Goodbye!\n\n";
 
 }
 
@@ -164,7 +164,10 @@ void PrintDexFile::printLiM(){
     for(limArrayIT=((*compArray).limArray).begin();
         limArrayIT!=((*compArray).limArray).end(); ++limArrayIT){
         
-        errs() << "\nLimArray cycle\n";
+        // DEBUG //
+        //errs() << "\nLimArray cycle\n";
+        // END DEBUG //
+        
         identifyLIMRowAndPrint(currentRow, &limArrayIT);
         ++currentRow;
     }
@@ -339,16 +342,23 @@ void PrintDexFile::identifyLIMRowAndPrint(int &currentRow,
     std::map<std::string, std::string>::const_iterator
         OpImplIT=LimOperations.find(((*mapIT)->second).rowType);
 
-    errs()<< "The data from the Map is: " << ((*mapIT)->second).rowType <<"\n";
+    // DEBUG //
+    //errs()<< "The data from the Map is: " << ((*mapIT)->second).rowType <<"\n";
+    // END DEBUG //
 
     // Check if it is a recognized operation
     if(OpImplIT!=LimOperations.end()){
         
         opType=OpImplIT->second;
-        errs()<<"Operation type: "<<opType<<"\n";
-
+        
+        // DEBUG //
+        //errs()<<"Operation type: "<<opType<<"\n";
+        // END DEBUG //
+        
         if(opType=="null"){
-            errs() << "A load operation is considered!\n";
+            // DEBUG //
+            //errs() << "A load operation is considered!\n";
+            // END DEBUG //
 
             // Check if there are input operands
             if((((*mapIT)->second).inputConnections).front() == (int*)0xdef){
@@ -423,7 +433,9 @@ void PrintDexFile::addDataRow(int &currentRow, int* const &nameRow,
 
         // Check if the source cells are FAs/HAs:
         getOutPinName(sourceCells, outSrc);
-        errs()<<"SOURCE CELLS: "<<sourceCells<<"; baseIndex: "<<sourceCellsBaseIndex<<"\n";
+        // DEBUG //
+        //errs()<<"SOURCE CELLS: "<<sourceCells<<"; baseIndex: "<<sourceCellsBaseIndex<<"\n";
+        // END DEBUG //
 
         // Map Section
         *outLiMMap   << "\t\tfor i in range(0,1," << par-1 << "){ " << sourceCells
@@ -440,7 +452,9 @@ void PrintDexFile::addDataRow(int &currentRow, int* const &nameRow,
 void PrintDexFile::insertNamesMap(int* const &rowName, std::string cellName,
     int &cellRow){
     
-    errs() << "Data passed: " << rowName << ", cellName " <<cellRow << "\n";
+    // DEBUG //
+    //errs() << "Data passed: " << rowName << ", cellName " <<cellRow << "\n";
+    // END DEBUG //
     nameAndIndex structTmp={cellName, cellRow};
     namesMap.insert({rowName, structTmp});
 }
@@ -450,7 +464,9 @@ void PrintDexFile::insertNamesMap(int* const &rowName, std::string cellName,
 void PrintDexFile::getNameAndIndexOfSourceRow(int* const &sourceRow,
     std::string &sourceCellName, int &sourceCellRow){
     
-    errs()<<"\nFinding: "<<sourceRow<<"\n";
+    // DEBUG //
+    //errs()<<"\nFinding: "<<sourceRow<<"\n";
+    // END DEBUG //
     namesMapIT=namesMap.find(sourceRow);
 
     if(namesMapIT!=namesMap.end())
@@ -845,7 +861,9 @@ void PrintDexFile::powerPathSection() {
         // the data must be different from the default value (0xDEF) that
         // means no imput connection in memory cell
         if (((limArrayIT->second).inputConnections).front() != (int*)0xdef ){
-            errs() << "Memory storing input: " << ((limArrayIT->second).inputConnections).front() << "\n";
+            // DEBUG //
+            //errs() << "Memory storing input: " << ((limArrayIT->second).inputConnections).front() << "\n";
+            // END DEBUG //
             // Check if there are more instruction in parallel
             if(i>0)
                 *outInstrPath << "\n\t\t\tbreak\n\n";
@@ -874,8 +892,9 @@ void PrintDexFile::printPowerPathSection() {
     // Find the memory row where it is contained the logic to consider
     logicIT=((*compArray).limArray).find(((limArrayIT->second).inputConnections).front());
 
-    errs() << "\nLiM type: " << (logicIT->second).rowType << "\n";
-
+    // DEBUG //
+    //errs() << "\nLiM type: " << (logicIT->second).rowType << "\n";
+    // END DEBUG //
 
     // If the number of input connection to the row is greater than 1, 
     // a mux has to be inserted inside the array

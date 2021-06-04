@@ -467,6 +467,23 @@ LiMCompiler::LiMCompiler(InstructionTable & ptrIT):zeroAddr(0){
 
 }
 
+// -- DEBUG FUNCTION -- //
+// bool LiMCompiler::findValueInANM(int * const &srcReg)
+// {
+//     for (arrayNamesMapIT = arrayNamesMap.begin(); arrayNamesMapIT != arrayNamesMap.end(); ++arrayNamesMapIT)
+//     {
+//         errs()<<"first "<<arrayNamesMapIT->first<<"\n";
+//         for (std::list<int *>::iterator it = (arrayNamesMapIT->second).begin(); it != (arrayNamesMapIT->second).end(); ++it)
+//         {
+//             errs()<<"second "<< *it <<"\n";
+//             if (*it == srcReg)
+//                 return true;
+//         }
+//     }
+//     return false;
+// }
+// -- END DEBUG FUNCTION -- //
+
 ///Function to update the arrayNamesMap
 void LiMCompiler::addNewItem(int * const &origSrc, int * const &genName){
     arrayNamesMapIT=arrayNamesMap.find(origSrc);

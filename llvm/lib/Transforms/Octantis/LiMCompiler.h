@@ -63,6 +63,10 @@ private:
     ///Function to get a new name for additional LiM rows
     int * getNewName();
 
+    // -- DEBUG FUNCTION -- //
+    //bool findValueInANM(int * const &srcReg);
+    // -- END DEBUG FUNCTION -- //
+    
     //Function to find the position of an element inside the InstructionList
     //(It may be moved inside the InstructionTable class!)
   //  std::list<InstructionTable::instructionData>::iterator getIteratorToElement(int * position, std::list<InstructionTable::instructionData> * ptrIL);
