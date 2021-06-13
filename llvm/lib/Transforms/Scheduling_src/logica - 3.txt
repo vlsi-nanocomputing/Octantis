@@ -1,0 +1,3 @@
+C AND A B
+D OR A C
+E AND C D

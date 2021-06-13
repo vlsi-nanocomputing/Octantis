@@ -3,6 +3,11 @@
 SchedulerGraph::SchedulerGraph()
 {
     //ctor
+    _mem_usage=0;
+
+    _recursion=_mem_size*6; //Backtracking factor
+
+    std::cout << _recursion << std::endl;
 }
 
 SchedulerGraph::~SchedulerGraph()
@@ -18,36 +23,98 @@ SchedulerGraph::~SchedulerGraph()
 }
 
 /// Create a new node if not exist, and add the edge with is father/child
-void SchedulerGraph::_addNode(const std::string &id, const std::string &child, const std::string &father, const int &delay)
+void SchedulerGraph::_addNode(const std::string &rd, const std::string &op_n, std::string &rs1, const std::string &rs2)
 {
-    std::map <std::string, Node>::iterator it_tmp;
+    std::map <std::string, Node>::iterator it_graph;
 
-    it_tmp=_graph.find(id); //check if exist the node
-    if (it_tmp ==_graph.end()) //not found
-        _graph[id]=Node(id, delay); //add a new node
+    _graph[op_n]=op_n; //add a new node, with a delay equal to 0
 
-    if (child == "")
+    it_graph=_graph.find(rd); //check if exist the node
+    if (it_graph ==_graph.end()) //not found
+        _graph[rd]=Node(rd, 1); //add a new node with a delay to 1
+
+    it_graph=_graph.find(rs1); //check if exist the node
+    if (it_graph ==_graph.end()) //not found
+        _graph[rs1]=Node(rs1, 1); //add a new node with a delay to 1
+
+    it_graph=_graph.find(rs2); //check if exist the node
+    if (it_graph ==_graph.end()) //not found
+        _graph[rs2]=Node(rs2, 1); //add a new node with a delay to 1
+
+
+    if (_graph[rs2].setLiM(op_n)) //insert if possible the logic in memory; if it cannot, it will try with the other memory
     {
-        _graph[id].setFather(father);
-        _graph[father].setChild(id);
-
-        _roots_flag[id]=false; // id is not a father for sure
-        //if don't find the id among the leaves => set as leaf, but it can be easily changed in case of father==""
-        //and if it is not changed from the case father=="" then we are sure that it is a absolute leaf
-        if(_leaves_flag.find(id) == _leaves_flag.end())
-            _leaves_flag[id]=true;
+        if (_graph[rs1].setLiM(op_n)) //insert if possible the logic in memory; if it cannot, it will create a new node copying the main information
+        {
+            _graph[rs1+rs1]=Node(rs1+rs1, _graph[rs1]); //Created and copied the information useful into the new node
+            _graph[rs1+rs1].setLiM(op_n); //Insert the Logic inside the memory (LiM)
+            rs1=rs1+rs1;
+        }
     }
-    if (father == "")
+
+    //edges between rd and op_n
+    _graph[rd].setFather(op_n);
+    _graph[op_n].setChild(rd);
+    _roots_flag[rd]=false; // rd is not an absolute father for sure
+    //if don't find the id among the leaves => set as leaf, but it can be easily changed when used as father node
+    //and if it is not changed then we are sure that it is a absolute leaf
+    if(_leaves_flag.find(rd) == _leaves_flag.end())
+        _leaves_flag[rd]=true;
+
+    //edges between rs1/rs2 and op_n
+    _graph[rs1].setChild(op_n);
+    _graph[rs2].setChild(op_n);
+    _graph[op_n].setFather(rs1);
+    _graph[op_n].setFather(rs2);
+    _leaves_flag[rs1]=false; // rs1 is not an absolute child for sure
+    _leaves_flag[rs2]=false; // rs2 is not an absolute child for sure
+    //if don't find the id among the roots => set as root, but it can be easily changed when used as child node
+    //and if it is not changed then we are sure that it is a absolute root
+    if(_roots_flag.find(rs1) == _roots_flag.end())
+        _roots_flag[rs1]=true;
+    if(_roots_flag.find(rs2) == _roots_flag.end())
+        _roots_flag[rs2]=true;
+}
+
+/// Create a new node if not exist, and add the edge with is father/child
+void SchedulerGraph::_addNode(const std::string &rd, const std::string &op_n, std::string &rs1)
+{
+    std::map <std::string, Node>::iterator it_graph;
+
+    _graph[op_n]=op_n; //add a new node, with a delay equal to 0
+
+    it_graph=_graph.find(rd); //check if exist the node
+    if (it_graph ==_graph.end()) //not found
+        _graph[rd]=Node(rd, 1); //add a new node with a delay to 1
+
+    it_graph=_graph.find(rs1); //check if exist the node
+    if (it_graph ==_graph.end()) //not found
+        _graph[rs1]=Node(rs1, 1); //add a new node with a delay to 1
+
+    if (_graph[rs1].setLiM(op_n)) //insert if possible the logic in memory; if it cannot, it will create a new node copying the main information
     {
-        _graph[id].setChild(child);
-        _graph[child].setFather(id);
-
-        _leaves_flag[id]=false; // id is not a child for sure
-        //if don't find the id among the roots => set as root, but it can be easily changed in case of child==""
-        //and if it is not changed from the case child=="" then we are sure that it is a absolute root
-        if(_roots_flag.find(id) == _roots_flag.end())
-            _roots_flag[id]=true;
+        _graph[rs1+rs1]=Node(rs1+rs1, _graph[rs1]); //Created and copied the information useful into the new node
+        _graph[rs1+rs1].setLiM(op_n); //Insert the Logic inside the memory (LiM)
+        rs1=rs1+rs1;
     }
+
+    //edges between rd and op_n
+    _graph[rd].setFather(op_n);
+    _graph[op_n].setChild(rd);
+    _roots_flag[rd]=false; // rd is not an absolute father for sure
+    //if don't find the id among the leaves => set as leaf, but it can be easily changed when used as father node
+    //and if it is not changed then we are sure that it is a absolute leaf
+    if(_leaves_flag.find(rd) == _leaves_flag.end())
+        _leaves_flag[rd]=true;
+
+    //edges between rs1 and op_n
+    _graph[rs1].setChild(op_n);
+    _graph[op_n].setFather(rs1);
+    _leaves_flag[rs1]=false; // rs1 is not an absolute child for sure
+    //if don't find the id among the roots => set as root, but it can be easily changed when used as child node
+    //and if it is not changed then we are sure that it is a absolute root
+    if(_roots_flag.find(rs1) == _roots_flag.end())
+        _roots_flag[rs1]=true;
 }
 
 /// It associates the variable name with the column of the SDC system (LP -> Linear Problem)
@@ -103,26 +170,30 @@ void SchedulerGraph::_mobility_id()
     int mob;
     std::map <std::string, int>::iterator it_resultASAP;
 
+    std::cout << "Debug mobility information:" << std::endl;
     //mobility is calculated with the difference of the time scheduling between ALAP and ASAP
     for (it_resultASAP=_resultASAP.begin(); it_resultASAP!=_resultASAP.end(); ++it_resultASAP)
     {
         mob=_resultALAP[it_resultASAP->first]-_resultASAP[it_resultASAP->first];
+        //_result_mobility_list[it_resultASAP->first]=mob;
 
         _mobility_list[mob].push_back(it_resultASAP->first);
         std::cout << "Mob\t" << it_resultASAP->first << "\t" << mob << std::endl;
     }
 
     //Debug
-    int p=0;
+    //int p=0;
+    std::cout << std::endl;
     for (std::map <int, std::list <std::string>>::iterator it=_mobility_list.begin(); it!=_mobility_list.end(); ++it)
     {
-        std::cout << p;
+        //std::cout << p;
+        std::cout << it->first;
         for (std::list <std::string>::iterator it_l=(it->second).begin(); it_l!=(it->second).end(); ++it_l)
         {
             std::cout << " - " << *it_l;
         }
         std::cout << std::endl;
-        p++;
+        //p++;
     }
 
     std::cout << std::endl;
@@ -148,6 +219,7 @@ void SchedulerGraph::fileToGraph(const std::string &namefile)
     }
 
     //Read file line by line until the end
+    std::cout << "Input:" << std::endl;
     while (getline(fin, line))
     {
         is.str(line);
@@ -156,22 +228,20 @@ void SchedulerGraph::fileToGraph(const std::string &namefile)
         is >> rs1;
 
         op_n=op+std::to_string(n); //add a crescent number at the end of the string
-        _graph[op_n]=op_n; //add a new node, with a delay equal to 0
 
-        _addNode(rd, "", op_n, 1); //add a new node (rd) if not exist, giving the id and is father
-        _addNode(rs1, op_n, "", 1); //add a new node (rs1) if not exist, giving the id and is child
-
-        rs2.clear();
         if (op != "NOT") // in case of not operator the RS2 doesn't exist
         {
             is >> rs2;
-            _addNode(rs2, op_n, "", 1);
+            _addNode(rd, op_n, rs1, rs2);
         }
+        else
+            _addNode(rd, op_n, rs1);
 
         n++;
         is.clear();
 
         std::cout << "Debug: " << rd << " " << op_n << " " << rs1 << " " << rs2 << std::endl;
+
     }
     fin.close();
 
@@ -200,15 +270,17 @@ void SchedulerGraph::fileToGraph(const std::string &namefile)
         std::cout << it->first << ": " << it->second << std::endl;
 
 
-    std::cout << "Debug roots list:" << std::endl;
+    std::cout << "Debug absolute roots:" << std::endl;
     for (std::list <std::string>::iterator it=_roots_graph.begin(); it!=_roots_graph.end(); ++it)
         std::cout << *it << std::endl;
-    std::cout << "Debug leaves list:" << std::endl;
+    std::cout << "Debug absolute leaves:" << std::endl;
     for (std::list <std::string>::iterator it=_leaves_graph.begin(); it!=_leaves_graph.end(); ++it)
         std::cout << *it << std::endl;
+    std::cout << std::endl;
 }
 
-void SchedulerGraph::dfs_father(const std::string &child)
+//Used for debug of the graph
+/*void SchedulerGraph::dfs_father(const std::string &child)
 {
     std::vector <std::string> fathers;
     std::vector <std::string>::iterator it_father;
@@ -226,7 +298,7 @@ void SchedulerGraph::dfs_father(const std::string &child)
 
     _graph[child].setColor("BLACK");
 
-}
+}*/
 
 /// Generation of the SDC system -> see LPsolve reference
 int SchedulerGraph::graphToSDC()
@@ -280,7 +352,6 @@ int SchedulerGraph::graphToSDC()
         {
             // Naming variables. Not required, but can be useful for debugging //
             _setVariableNameLP(*it_child);
-
 
             j=0;
 
@@ -357,16 +428,17 @@ int SchedulerGraph::asap_sdc()
 
     //debug
     std::cout << std::endl;
-    int p=0;
+    //int p=0;
     for (std::map <int, std::list <std::string>>::iterator it=_schedulingASAP.begin(); it!=_schedulingASAP.end(); ++it)
     {
-        std::cout << p;
+        //std::cout << p;
+        std::cout << it->first;
         for (std::list <std::string>::iterator it_l=(it->second).begin(); it_l!=(it->second).end(); ++it_l)
         {
             std::cout << " - " << *it_l;
         }
         std::cout << std::endl;
-        p++;
+        //p++;
     }
 
     std::cout << std::endl;
@@ -374,23 +446,23 @@ int SchedulerGraph::asap_sdc()
 }
 
 /// Solve the SDC system in order to obtain the ASAP scheduling
-/// N.B. Must be generated before the ASAP scheduling
+/// N.B. Must be generated the ASAP scheduling before
 int SchedulerGraph::alap_sdc()
 {
     int j;
     int ret=0;
+    //int Tlast=0;
 
     std::cout << "ALAP execution" << std::endl;
 
+    //Tlast=(_schedulingASAP.rbegin())->first;
+
     for (std::list <std::string>::iterator it_ASAP=_leaves_graph.begin(); it_ASAP!=_leaves_graph.end(); ++it_ASAP)
-         _add_single_var_constraint_sdc(*it_ASAP, EQ, _resultASAP[*it_ASAP]); //add EQ constraint
+        _add_single_var_constraint_sdc(*it_ASAP, EQ, _resultASAP[*it_ASAP]); //add EQ constraint
+
     std::cout << std::endl;
 
-
-
-
-
-    // Set the object direction to minimize //
+    // Set the object direction to maximize //
     set_maxim(lp);
     write_lp(lp, (char *)"modelALAP.lp"); // Generation of a file
 
@@ -424,16 +496,17 @@ int SchedulerGraph::alap_sdc()
 
     // debug
     std::cout << std::endl;
-    int p=0;
+    //int p=0;
     for (std::map <int, std::list <std::string>>::iterator it=_schedulingALAP.begin(); it!=_schedulingALAP.end(); ++it)
     {
-        std::cout << p;
+        //std::cout << p;
+        std::cout << it->first;
         for (std::list <std::string>::iterator it_l=(it->second).begin(); it_l!=(it->second).end(); ++it_l)
         {
             std::cout << " - " << *it_l;
         }
         std::cout << std::endl;
-        p++;
+        //p++;
     }
     std::cout << std::endl;
 
@@ -444,141 +517,494 @@ int SchedulerGraph::alap_sdc()
 
     set_minim(lp);
 
-
-    //debug//
-    //_mobility_id();
     return ret;
 }
 
 /// Resource constraint scheduling (NO loops in the graph)
 int SchedulerGraph::resourceScheduling()
 {
-    _resConstraint["REG"]=2;
-    int i;
-    int flag_scheduled;
-    std::map <std::string, int>::iterator it_resConstraint;
     std::string id;
-    std::string type;
-    int ret=0;
-
+    std::string HWid;
     std::map <int, std::list <std::string>>::iterator it_mobility_list;
-    std::list <std::string>::iterator it_node;
+    std::vector <std::string> id_child;
+    //std::string LiMid;
+    std::string LiMtype;
+    int Tstart, Tend;
 
+    int ret;
+    bool t_available=false;
+    std::map <std::string, int>::iterator it_HW_usage;
+    std::map <int, std::string>::iterator it_scoreboard;
 
+    _mobility_id(); //Compute the mobility from ASAP and ALAP information
 
-
-    for(i=0; i<(int)_schedulingASAP.size(); i++)
-    {
-        for(it_resConstraint=_resConstraint.begin(); it_resConstraint!=_resConstraint.end(); ++it_resConstraint)
-            _table_res_used[i][it_resConstraint->first]=0;
-
-    }
-
-
-    _mobility_id();
-
-
-
+    std::cout << "Tstart and Tend information:" << std::endl;
     for (it_mobility_list=_mobility_list.begin(); it_mobility_list!=_mobility_list.end(); ++it_mobility_list)
     {
         while (!(it_mobility_list->second).empty())
         {
             id=(it_mobility_list->second).front(); //get front element of the list
-            type=_graph[id].getType();
-            //std::cout << id << "\t" << type << std::endl;
             (it_mobility_list->second).pop_front(); //remove front element of the list
 
-            //std::cout << *it_mobility_list << std::endl;
-
-            it_resConstraint=_resConstraint.find(type);
-            if (it_resConstraint != _resConstraint.end()) //check if the node must be constrained
+            if(_graph[id].getType() == "REG") //The Node different from the REG type are not considered
             {
-                //std::cout << "prova" << std::endl;
-                flag_scheduled=0;
-                for(i=0; i<=it_mobility_list->first && !flag_scheduled; i++)
-                {
-                    //std::cout << i << std::endl;
 
-                    if(_table_res_used[_resultASAP[id]+i][type]<_resConstraint[type]) //check if there is a place for the node
+                Tstart=_resultALAP[id]; //Using the ALAP case: the variable's time life is reduced
+                Tend=Tstart; //initialization of Tend
+                id_child=_graph[id].getChild();
+                for (std::vector <std::string>::iterator it_id_child=id_child.begin(); it_id_child!=id_child.end(); ++it_id_child)
+                {
+                    if(_resultALAP[*it_id_child] > Tend) //find the latest time that must be used checking when the child start in the worst case that is the ALAP
+                        Tend=_resultALAP[*it_id_child];
+                }
+
+                LiMtype=_graph[id].getLiMtype(); //A row could be with logic (LiM) or a simple memory row without logic
+
+                std::cout << "Id: " << id << "(" << LiMtype << ")\t- Tstart: " << Tstart << " Tend: " << Tend << std::endl;
+
+                if(_mem_usage<_mem_size) //If there is space, it allocates a new row
+                {
+                    HWid="#"+std::to_string(_mem_usage); //Create a new HW id
+
+                    _type_usage[LiMtype][HWid]=1;
+                    for(int t=Tstart; t<=Tend; t++)
+                        _scoreboard[LiMtype][HWid][t]=id;
+                    _scheduling[Tstart].push_back(id); //debug
+                    _HWscheduling[Tstart].push_back(HWid);
+                    _node_to_HW[id]=HWid;
+                    _node_to_HW[_graph[id].getLiM()]=LiMtype+HWid;
+                    _HW_to_node[HWid].push_back(id); //debug
+
+                    _HWgraph[HWid]=Node(HWid, 1); //Create a new HW node
+                    if(LiMtype != "REG")
+                        _graph[HWid].setLiM(LiMtype+HWid);
+
+                    _mem_usage++;
+                }
+                else
+                {
+                    t_available=false; //flag to understand if an operator is not free in a desidered time
+                    for(it_HW_usage=_type_usage[LiMtype].begin(); it_HW_usage!=_type_usage[LiMtype].end() && t_available==false; ++it_HW_usage)
                     {
-                        //std::cout << "prova" << std::endl;
-                        (_scheduling[_resultASAP[id]+i]).push_back(id);
-                        _table_res_used[_resultASAP[id]+i][type]+=1;
-                        flag_scheduled=1;
+                        HWid=(it_HW_usage->first);
+                        std::cout << "find: " << LiMtype << std::endl;
+
+                        t_available=true;
+                        for(int t=Tstart; t<=Tend && t_available; t++)
+                        {
+                             it_scoreboard=_scoreboard[LiMtype][HWid].find(t);
+                             if(it_scoreboard != _scoreboard[LiMtype][HWid].end()) //if found => operator just used in t
+                                t_available=false;
+                        }
+                    }
+
+                    if(t_available) //HW operator is free and it can be reused
+                    {
+                        for(int t=Tstart; t<=Tend; t++)
+                            _scoreboard[LiMtype][HWid][t]=id;
+                        _scheduling[Tstart].push_back(id);
+                        _HWscheduling[Tstart].push_back(HWid);
+                        _node_to_HW[id]=HWid;
+                        _node_to_HW[_graph[id].getLiM()]=LiMtype+HWid;
+                        _HW_to_node[HWid].push_back(id); //debug
+
+                        _type_usage[LiMtype][HWid]+=1; //count many times is used an HW operator
+
+                        if(_type_usage[LiMtype][HWid]==_mux_size) //if the operator use reach the size of the mux, it will be erased from the map, in this way is not more available
+                            _type_usage[LiMtype].erase(HWid);
+                    }
+                    if(t_available==false && _recursion>0) //erase all, add a SDC constraint, recompute all
+                    {
+                        std::cout << "Errore numero di registri" << std::endl;
+
+
+                        _add_single_var_constraint_sdc(id, GE, Tstart+1);
+                        //_add_single_var_constraint_sdc(_scheduling[Tstart].front(), GE, Tstart+1);
+
+                        //Clear all the data structures for a new computation
+                        _clear();
+
+                        ret=asap_sdc();
+                        if(ret!=0)
+                        {
+                            std::cout << "Errore scd asap, close execution" << std::endl;
+                            exit (EXIT_FAILURE);
+                        }
+                        ret=alap_sdc();
+                        if(ret!=0)
+                        {
+                            std::cout << "Errore scd alap, close execution" << std::endl;
+                            exit (EXIT_FAILURE);
+                        }
+
+                        _recursion--;
+                        resourceScheduling();
+
+                        return 1;
+
                     }
                 }
-                if (flag_scheduled==0) //case with no place => new constraint and backtracking with the scheduling
-                {
-                    std::cout << i << std::endl;
-
-                    std::cout << "errore non c'è' piu' postooooooooooooo"  << std::endl;
-                    std::cout << id << "\t" << type << std::endl;
-
-                    _add_single_var_constraint_sdc(id, GE, i);
-
-                    //eventualmente fare una funzione che azzera tutte le strutture dati
-                    _schedulingASAP.clear();
-                    _resultASAP.clear();
-                    _schedulingALAP.clear();
-                    _resultALAP.clear();
-                    _mobility_list.clear();
-                    _table_res_used.clear();
-                    _scheduling.clear();
-
-                    ret=asap_sdc();
-                    if(ret!=0)
-                    {
-                        std::cout << "Errore scd asap, close execution" << std::endl;
-                        exit (EXIT_FAILURE);
-                    }
-                    ret=alap_sdc();
-                    if(ret!=0)
-                    {
-                        std::cout << "Errore scd alap, close execution" << std::endl;
-                        exit (EXIT_FAILURE);
-                    }
-                    resourceScheduling();
-
-                    return 1;
-
-                }
             }
-            else
-            {
-                //std::cout << "i: " << _resultALAP[id] << " id: " << id << std::endl;
-                (_scheduling[_resultALAP[id]]).push_back(id);
-            }
-
-
         }
     }
 
+    _connect_HWedge(_roots_graph);
 
-    // debug
-    std::cout << std::endl;
+    std::cout << std::endl << "Scheduling of the node:" << std::endl;
     for (std::map <int, std::list <std::string>>::iterator it=_scheduling.begin(); it!=_scheduling.end(); ++it)
     {
         std::cout << it->first;
         for (std::list <std::string>::iterator it_l=(it->second).begin(); it_l!=(it->second).end(); ++it_l)
         {
-            std::cout << " - " << *it_l;
+            std::cout << " - " << *it_l << "(" << _graph[*it_l].getLiMtype() << ")";
         }
         std::cout << std::endl;
     }
     std::cout << std::endl;
 
+    std::cout << "Scheduling of the HW node:" << std::endl;
+    for (std::map <int, std::list <std::string>>::iterator it=_HWscheduling.begin(); it!=_HWscheduling.end(); ++it)
+    {
+        std::cout << it->first;
+        for (std::list <std::string>::iterator it_l=(it->second).begin(); it_l!=(it->second).end(); ++it_l)
+        {
+            std::cout << " - " << *it_l;// << "(" << _graph[*it_l].getLiMtype() << ")";
+        }
+        std::cout << std::endl;
+    }
+    std::cout << std::endl;
+
+    std::cout << "Legend of HW operator:" << std::endl;
+    for (std::map <std::string, std::list<std::string>>::iterator it=_HW_to_node.begin(); it!=_HW_to_node.end(); ++it)
+    {
+        std::cout << it->first << "(" << _graph[*(it->second).begin()].getLiMtype() << ")";
+        for (std::list <std::string>::iterator it_l=(it->second).begin(); it_l!=(it->second).end(); ++it_l)
+            std::cout << " - " << *it_l;
+
+        std::cout << std::endl;
+    }
+    std::cout << std::endl;
+
+
+
+    //for (std::map <std::string, std::list<std::string>>::iterator it=_HW_to_node.begin(); it!=_HW_to_node.end(); ++it)
+    //    std::cout << it->first << "(" << _graph[it->first].getLiMtype() << ")" << " - " << it->second << std::endl;
+    //for (std::map <std::string, std::string>::iterator it=_node_to_HW.begin(); it!=_node_to_HW.end(); ++it)
+    //    std::cout << it->first << " - " << it->second << "(" << _graph[it->first].getLiMtype() << ")" << std::endl;
+    //std::cout << std::endl;
+
+    if(_recursion==0)
+        std::cout << "Impossible to solve the scheduling, few operators available" << std::endl;
 
     return 0;
+}
+
+/// Resource constraint scheduling (NO loops in the graph)
+int SchedulerGraph::resourceSchedulingMaxArea()
+{
+    std::string id;
+    std::string HWid;
+    std::map <int, std::list <std::string>>::iterator it_mobility_list;
+    std::vector <std::string> id_child;
+    //std::string LiMid;
+    std::string LiMtype;
+    int Tstart, Tend;
+
+    int ret;
+    bool t_available=true;
+    std::map <std::string, std::map <std::string, int>>::iterator it_type_usage;
+    std::map <std::string, int>::iterator it_HW_usage;
+    std::map <int, std::string>::iterator it_scoreboard;
+
+    _mobility_id(); //Compute the mobility from ASAP and ALAP information
+
+    std::cout << "Tstart and Tend information:" << std::endl;
+    for (it_mobility_list=_mobility_list.begin(); it_mobility_list!=_mobility_list.end(); ++it_mobility_list)
+    {
+        while (!(it_mobility_list->second).empty())
+        {
+            id=(it_mobility_list->second).front(); //get front element of the list
+            (it_mobility_list->second).pop_front(); //remove front element of the list
+
+            if(_graph[id].getType() == "REG") //The Node different from the REG type are not considered
+            {
+
+                Tstart=_resultALAP[id]; //Using the ALAP case: the variable's time life is reduced
+                Tend=Tstart; //initialization of Tend
+                id_child=_graph[id].getChild();
+                for (std::vector <std::string>::iterator it_id_child=id_child.begin(); it_id_child!=id_child.end(); ++it_id_child)
+                {
+                    if(_resultALAP[*it_id_child] > Tend) //find the latest time that must be used checking when the child start in the worst case that is the ALAP
+                        Tend=_resultALAP[*it_id_child];
+                }
+
+                LiMtype=_graph[id].getLiMtype(); //A row could be with logic (LiM) or a simple memory row without logic
+
+                std::cout << "Id: " << id << "(" << LiMtype << ")\t- Tstart: " << Tstart << " Tend: " << Tend << std::endl;
+
+
+                it_type_usage=_type_usage.find(LiMtype);
+                if(it_type_usage != _type_usage.end()) //type desidered found
+                {
+                    t_available=false; //flag to understand if an operator is not free in a desidered time
+                    for(it_HW_usage=_type_usage[LiMtype].begin(); it_HW_usage!=_type_usage[LiMtype].end() && t_available==false; ++it_HW_usage)
+                    {
+                        HWid=(it_HW_usage->first);
+                        std::cout << "find: " << LiMtype << std::endl;
+
+                        t_available=true;
+                        for(int t=Tstart; t<=Tend && t_available; t++)
+                        {
+                             it_scoreboard=_scoreboard[LiMtype][HWid].find(t);
+                             if(it_scoreboard != _scoreboard[LiMtype][HWid].end()) //if found => operator just used in t
+                                t_available=false;
+                        }
+                    }
+                    if(t_available) //HW operator is free and it can be reused
+                    {
+                        std::cout << "HWused: " << HWid << std::endl;
+                        for(int t=Tstart; t<=Tend; t++)
+                            _scoreboard[LiMtype][HWid][t]=id;
+                        _scheduling[Tstart].push_back(id);
+                        _HWscheduling[Tstart].push_back(HWid);
+                        _node_to_HW[id]=HWid;
+                        _node_to_HW[_graph[id].getLiM()]=LiMtype+HWid;
+                        _HW_to_node[HWid].push_back(id); //debug
+
+                        _type_usage[LiMtype][HWid]+=1; //count many times is used an HW operator
+
+                        if(_type_usage[LiMtype][HWid]==_mux_size) //if the operator use reach the size of the mux, it will be erased from the map, in this way is not more available
+                        {
+                            std::cout << "erased HWid: " << HWid << std::endl;
+                            _type_usage[LiMtype].erase(HWid);
+                        }
+                    }
+                }
+                if((it_type_usage == _type_usage.end()) || t_available==false) //type desidered not found
+                {
+                    if(_mem_size==0 || _mem_usage<_mem_size) //If there is space, it allocates a new row or if doensn't matter the size of the memory
+                    {
+                        HWid="#"+std::to_string(_mem_usage); //Create a new HW id
+
+                        _type_usage[LiMtype][HWid]=1;
+                        for(int t=Tstart; t<=Tend; t++)
+                            _scoreboard[LiMtype][HWid][t]=id;
+                        _scheduling[Tstart].push_back(id); //debug
+                        _HWscheduling[Tstart].push_back(HWid);
+                        _node_to_HW[id]=HWid;
+                        _node_to_HW[_graph[id].getLiM()]=LiMtype+HWid;
+                        _HW_to_node[HWid].push_back(id); //debug
+
+                        _HWgraph[HWid]=Node(HWid, 1); //Create a new HW node
+                        if(LiMtype != "REG")
+                            _graph[HWid].setLiM(LiMtype+HWid);
+
+                        _mem_usage++;
+                        //std::cout << "mem_usage: " << _mem_usage << std::endl;
+                    }
+                    else if(_recursion>0)//(_mem_size!=0 && _mem_usage>_mem_size && _recursion>0) //erase all, add a SDC constraint, recompute all
+                    {
+                        std::cout << "Errore numero di registri" << std::endl;
+                        _add_single_var_constraint_sdc(id, GE, Tstart+1);
+
+                        //Clear all the data structures for a new computation
+                        _clear();
+
+                        ret=asap_sdc();
+                        if(ret!=0)
+                        {
+                            std::cout << "Errore scd asap, close execution" << std::endl;
+                            exit (EXIT_FAILURE);
+                        }
+                        ret=alap_sdc();
+                        if(ret!=0)
+                        {
+                            std::cout << "Errore scd alap, close execution" << std::endl;
+                            exit (EXIT_FAILURE);
+                        }
+
+                        _recursion--;
+                        resourceSchedulingMaxArea();
+
+                        return 1;
+                    }
+                }
+            }
+        }
+    }
+
+    _connect_HWedge(_roots_graph);
+
+    std::cout << std::endl << "Scheduling of the node:" << std::endl;
+    for (std::map <int, std::list <std::string>>::iterator it=_scheduling.begin(); it!=_scheduling.end(); ++it)
+    {
+        std::cout << it->first;
+        for (std::list <std::string>::iterator it_l=(it->second).begin(); it_l!=(it->second).end(); ++it_l)
+        {
+            std::cout << " - " << *it_l << "(" << _graph[*it_l].getLiMtype() << ")";
+        }
+        std::cout << std::endl;
+    }
+    std::cout << std::endl;
+
+    std::cout << "Scheduling of the HW node:" << std::endl;
+    for (std::map <int, std::list <std::string>>::iterator it=_HWscheduling.begin(); it!=_HWscheduling.end(); ++it)
+    {
+        std::cout << it->first;
+        for (std::list <std::string>::iterator it_l=(it->second).begin(); it_l!=(it->second).end(); ++it_l)
+        {
+            std::cout << " - " << *it_l;// << "(" << _graph[*it_l].getLiMtype() << ")";
+        }
+        std::cout << std::endl;
+    }
+    std::cout << std::endl;
+
+    std::cout << "Legend of HW operator:" << std::endl;
+    for (std::map <std::string, std::list<std::string>>::iterator it=_HW_to_node.begin(); it!=_HW_to_node.end(); ++it)
+    {
+        std::cout << it->first << "(" << _graph[*(it->second).begin()].getLiMtype() << ")";
+        for (std::list <std::string>::iterator it_l=(it->second).begin(); it_l!=(it->second).end(); ++it_l)
+            std::cout << " - " << *it_l;
+
+        std::cout << std::endl;
+    }
+    std::cout << std::endl;
+
+
+    //for (std::map <std::string, std::string>::iterator it=_node_to_HW.begin(); it!=_node_to_HW.end(); ++it)
+    //    std::cout << it->first << " - " << it->second << "(" << _graph[it->first].getLiMtype() << ")" << std::endl;
+    //std::cout << std::endl;
+
+    if(_mem_size!=0 && _recursion==0)
+        std::cout << "Impossible to solve the scheduling, few operators available" << std::endl;
+
+    return 0;
+}
+
+/// Clear all the data structures used to store the scheduling information
+void SchedulerGraph::_clear()
+{
+    _schedulingASAP.clear();
+    _resultASAP.clear();
+    _schedulingALAP.clear();
+    _resultALAP.clear();
+    _mobility_list.clear();
+    _type_usage.clear();
+    _scoreboard.clear();
+    _scheduling.clear();
+    _HWscheduling.clear();
+    _HWgraph.clear();
+    _node_to_HW.clear();
+    _mem_usage=0;
+}
+
+/// Connection of all HW nodes
+void SchedulerGraph::_connect_HWedge(std::list <std::string> nodes)
+{
+    std::list <std::string> Q;
+    std::string id;
+    std::string HWid;
+    std::string HWchild;
+    std::vector <std::string> children;
+    std::vector <std::string> HWchildren;
+    std::vector <std::string>::iterator it_HWchildren;
+    std::vector <std::string>::iterator it_children;
+    std::map <std::string, Node>::iterator it_graph;
+    std::map <std::string, Node>::iterator it_HWgraph;
+
+    for(it_graph=_graph.begin(); it_graph!=_graph.end(); ++it_graph)
+    {
+        children=_graph[it_graph->first].getChild();
+        for(it_children=children.begin(); it_children!=children.end(); ++it_children)
+        {
+
+            HWid=_node_to_HW[it_graph->first];
+            HWchild=_node_to_HW[*it_children];
+
+            HWchildren=_HWgraph[HWid].getChild();
+            it_HWchildren=find(HWchildren.begin(), HWchildren.end(), HWchild);
+            if(it_HWchildren==HWchildren.end())
+            {
+                _HWgraph[HWid].setChild(HWchild);
+                _HWgraph[HWchild].setFather(HWid);
+            }
+        }
+    }
+
+    //BFS
+    /*Q=nodes;
+
+    while(!Q.empty())
+    {
+        id=Q.front();
+        Q.pop_front();
+
+        children=_graph[id].getChild();
+        for(it_children=children.begin(); it_children!=children.end(); ++it_children)
+        {
+            if(_graph[*it_children].getColor() == "WHITE")
+            {
+                _graph[*it_children].setColor("GREY");
+
+                HWid=_node_to_HW[id];
+                HWchild=_node_to_HW[*it_children];
+
+                _HWgraph[HWid].setChild(HWchild);
+                _HWgraph[HWchild].setFather(HWid);
+
+                Q.push_back(*it_children);
+            }
+        }
+        _graph[id].setColor("BLACK");
+    }
+*/
+    std::cout << std::endl;
+    for(it_HWgraph=_HWgraph.begin(); it_HWgraph!=_HWgraph.end(); ++it_HWgraph)
+    {
+        children=_HWgraph[it_HWgraph->first].getChild();
+        for(it_children=children.begin(); it_children!=children.end(); ++it_children)
+            std::cout << it_HWgraph->first << " -> " << *it_children << std::endl;
+    }
 
 }
 
+/*void SchedulerGraph::dfs()
+{
+    std::map <std::string, Node>::iterator it_HWgraph;
 
+    for(it_HWgraph=_HWgraph.begin(); it_HWgraph!=_HWgraph.end(); ++it_HWgraph)
+        _HWgraph[it_HWgraph->first].setColor("WHITE");
 
+    for(it_HWgraph=_HWgraph.begin(); it_HWgraph!=_HWgraph.end(); ++it_HWgraph)
+    {
+        if (_HWgraph[it_HWgraph->first].getColor() == "WHITE")
+            _dfs_visit(it_HWgraph->first);
+    }
+}
+
+void SchedulerGraph::_dfs_visit(std::string id)
+{
+    std::vector <std::string>::iterator it_children;
+    std::vector <std::string> children;
+
+    _HWgraph[id].setColor("GREY");
+    children=_graph[id].getChild();
+    for(it_children=children.begin(); it_children!=children.end(); ++it_children)
+    {
+        if(_graph[*it_children].getColor() == "WHITE")
+        {
+            std::cout << id  << "->" << *it_children << std::endl;
+            _dfs_visit(*it_children);
+        }
+    }
+    _HWgraph[id].setColor("BLACK");
+}*/
 
 void SchedulerGraph::debug()
 {
     std::map <std::string, Node>::iterator it_graph;
 
+    std::cout << "Debug delay information:" << std::endl;
     for(it_graph=_graph.begin(); it_graph!=_graph.end(); ++it_graph)
         std::cout << _graph[it_graph->first].getId() << "\t-> delay=" << _graph[it_graph->first].getDelay() << std::endl;
 

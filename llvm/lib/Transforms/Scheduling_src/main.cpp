@@ -20,7 +20,11 @@ int main()
     ret=obj.asap_sdc();
     ret=obj.alap_sdc();
 
-    obj.resourceScheduling();
+    //obj.resourceScheduling();
+
+    obj.resourceSchedulingMaxArea();
+
+    //obj.dfs();
 
     cout << endl << "Fine: " << ret << endl;
 

@@ -1,0 +1,4 @@
+out1 XNOR weight dm1
+out2 XNOR weight dm2
+out3 XNOR weight dm3
+out4 XNOR weight dm4
