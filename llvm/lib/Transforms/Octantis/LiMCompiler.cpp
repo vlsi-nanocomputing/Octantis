@@ -1,10 +1,11 @@
 /*-------------------------------------- The Octantis Project --------------------------------------*/
 //
-// LiM Compiler Class: class useful for the generation of a LiM object.
+// LiM Compiler Class: class useful for the generation of LiM array and FSM.
 //
 /*-------------------------------------------- Licence ---------------------------------------------*/
 //
 // © Andrea Marchesin 2020 (andrea.marchesin@studenti.polito.it) for Politecnico di Torino
+// © Alessio Nicola 2021 (alessio.nicola@studenti.polito.it) for Politecnico di Torino
 //
 /*--------------------------------------------------------------------------------------------------*/
 
@@ -20,12 +21,11 @@
 using namespace llvm;
 using namespace octantis;
 
-//NOTEs: The class has to be completely reconstructed (Especially for the management of arrays an loops)!
+//NOTEs: The class has to be completely reconstructed (Especially for the management of arrays and loops)!
 
 
-///Default constructor: it initializes the pointer to IT and the constant variable zeroAddr
-///      NOTEs: To verify the correct content of the zeroAddr variable.
-LiMCompiler::LiMCompiler(InstructionTable & ptrIT):zeroAddr(((ptrIT.instructionList).begin())->destinationReg){
+///Default constructor: it initializes the pointer to IT and the zeroAddr variable
+LiMCompiler::LiMCompiler(InstructionTable & ptrIT):zeroAddr(0){
 
     //Flag for the identification of shift operations
 //    bool isShiftLeft;
@@ -67,23 +67,21 @@ LiMCompiler::LiMCompiler(InstructionTable & ptrIT):zeroAddr(((ptrIT.instructionL
             int parallelism=32;
             std::string type="load";
 
-            //Definition of the starting address for the allocation
-            effAddrDestReg=instrListIT->destinationReg;
-
             //The operation has to be performed considering the loop/array factor
             for (int i=0; i<numIter; ++i) {
 
+                //get allocation address
+                effAddrDestReg=getNewName();
+                errs() << "Generated: " << effAddrDestReg << "\n";
+                
                 //Add new load instruction to the MemArray (CHECK IF NECESSARY ALL THESE REFERENCES!)
                 MemArray.addNewRow(effAddrDestReg, type, parallelism); //The length of the LiM words has to be defined inside the
                                                                        //coniguration file.
 
+                FSMLim.addNewInstruction(instrListIT->allocTime, effAddrDestReg);
+                
                 //Update the arrayMap
                 addNewItem(instrListIT->destinationReg,effAddrDestReg);
-
-                //Update the address
-                effAddrDestReg=getNewName();
-
-                errs() << "Generated: " << effAddrDestReg << "\n";
 
             }
 
@@ -147,15 +145,15 @@ LiMCompiler::LiMCompiler(InstructionTable & ptrIT):zeroAddr(((ptrIT.instructionL
             int * effInForDestReg;       
 
             //Identification of the kind of source operands
-            bool isSrc1Array;
-            bool isSrc2Array;
+            bool isSrc1Array=false;
+            bool isSrc2Array=false;
 
             //Variables to identify the source operands
             int * src1;
             int * src2;
 
             //Variable to identify the destination register
-            int * dest;
+            //int * dest;
 
             //Iterator over the list inside the arrayNamesMap
             std::list<int *>::iterator regNameIT;
@@ -208,7 +206,7 @@ LiMCompiler::LiMCompiler(InstructionTable & ptrIT):zeroAddr(((ptrIT.instructionL
 
             src1=instrListIT->sourceReg1;
             src2=instrListIT->sourceReg2;
-            dest=instrListIT->destinationReg;
+            //dest=instrListIT->destinationReg;
 
             if(isAccumulation){
 
@@ -261,7 +259,6 @@ LiMCompiler::LiMCompiler(InstructionTable & ptrIT):zeroAddr(((ptrIT.instructionL
                     aListIT2=std::next(aListIT1,1);
 
                     for (int j = 0; j < floor(arraySize/2); ++j) {
-
                         if(MemArray.changeLiMRowType(*aListIT2, instrListIT->operation, instrListIT->specifications)){
                                                 //If the sourceReg2 is a normal memory row the function replaces its structure into LiM
                                                 //whose type is defined by the operation that has to be performed.
@@ -282,6 +279,7 @@ LiMCompiler::LiMCompiler(InstructionTable & ptrIT):zeroAddr(((ptrIT.instructionL
 
                         //Function to add a new LiM Row inside the array: partial result row
                         MemArray.addNewResultRow(tmpName, parallelism, effInForDestReg);
+                        FSMLim.addNewInstruction(instrListIT->allocTime, tmpName);
 
                         ////////////////DEBUG/////////////////////
                         errs()<<"Content of the accumulationList:\n";
@@ -322,11 +320,19 @@ LiMCompiler::LiMCompiler(InstructionTable & ptrIT):zeroAddr(((ptrIT.instructionL
                          regNameIT=(internalANMIT->second).begin();
                          std::advance(regNameIT,loop);
                          src1=*regNameIT;
+                    } else {
+                        internalANMIT=findInANM(instrListIT->sourceReg1);
+                        regNameIT=(internalANMIT->second).begin();
+                        src1=*regNameIT;
                     }
                     if(isSrc2Array){
                         internalANMIT=findInANM(instrListIT->sourceReg2);
                         regNameIT=(internalANMIT->second).begin();
                         std::advance(regNameIT,loop);
+                        src2=*regNameIT;
+                    } else {
+                        internalANMIT=findInANM(instrListIT->sourceReg2);
+                        regNameIT=(internalANMIT->second).begin();
                         src2=*regNameIT;
                     }
 
@@ -386,6 +392,8 @@ LiMCompiler::LiMCompiler(InstructionTable & ptrIT):zeroAddr(((ptrIT.instructionL
                         //Duplication of the Instruction Table row
                         InstructionTable::instructionData dataStruct=*ptrInstrListTmp;
                         dataStruct.destinationReg=getNewName();
+                        effAddrDestReg=dataStruct.destinationReg;
+                        
                         dataStruct.operation=(instrListIT->operation);
 
                         //Insertion of the source LiM Row before the result one
@@ -417,10 +425,10 @@ LiMCompiler::LiMCompiler(InstructionTable & ptrIT):zeroAddr(((ptrIT.instructionL
                         /////////END DEBUG//////////
 
                         //Allocate the instruction in time, inside the FSM
-                        FSMLim.addNewInstruction(instrListIT->allocTime, dest);
+                        FSMLim.addNewInstruction(instrListIT->allocTime, effAddrDestReg);
 
-                        //Define the effective destination register
-                        effInForDestReg=dest;
+                        //Define the effective input for destination register
+                        effInForDestReg=effAddrDestReg; //Da verificare se è ok
 
                         //Advance the iterator by one position to come back to the result register
                         std::advance(instrListIT,1);
@@ -432,8 +440,9 @@ LiMCompiler::LiMCompiler(InstructionTable & ptrIT):zeroAddr(((ptrIT.instructionL
                     //errs() << "Generated: " << effAddrDestReg << "\n";
 
                     //Function to add a new LiM Row inside the array: partial result row
+                    effAddrDestReg=getNewName();
                     MemArray.addNewResultRow(effAddrDestReg, parallelism, effInForDestReg);
-
+                    FSMLim.addNewInstruction(instrListIT->allocTime, effAddrDestReg);
                     //Update the address
                     //effAddrDestReg=getNewName();
 
@@ -447,12 +456,6 @@ LiMCompiler::LiMCompiler(InstructionTable & ptrIT):zeroAddr(((ptrIT.instructionL
 
         }
 
-        //Loop for the definition of the required rows
-        for (int i=0; i<numIter;++i) {
-            //Allocate the instruction in time, inside the FSM
-            FSMLim.addNewInstruction(instrListIT->allocTime, instrListIT->destinationReg);
-        }
-
     }
 //-------------------------DEBUG SECTION----------------------
 
@@ -463,6 +466,23 @@ LiMCompiler::LiMCompiler(InstructionTable & ptrIT):zeroAddr(((ptrIT.instructionL
 //---------------------END DEBUG SECTION----------------------
 
 }
+
+// -- DEBUG FUNCTION -- //
+// bool LiMCompiler::findValueInANM(int * const &srcReg)
+// {
+//     for (arrayNamesMapIT = arrayNamesMap.begin(); arrayNamesMapIT != arrayNamesMap.end(); ++arrayNamesMapIT)
+//     {
+//         errs()<<"first "<<arrayNamesMapIT->first<<"\n";
+//         for (std::list<int *>::iterator it = (arrayNamesMapIT->second).begin(); it != (arrayNamesMapIT->second).end(); ++it)
+//         {
+//             errs()<<"second "<< *it <<"\n";
+//             if (*it == srcReg)
+//                 return true;
+//         }
+//     }
+//     return false;
+// }
+// -- END DEBUG FUNCTION -- //
 
 ///Function to update the arrayNamesMap
 void LiMCompiler::addNewItem(int * const &origSrc, int * const &genName){
@@ -495,7 +515,7 @@ int * LiMCompiler::getNewName(){
     //Get the current name available
     int * returnValue=zeroAddr;
     //Update its value for the next cycle
-    zeroAddr--;
+    zeroAddr++;
 
     return returnValue;
 }

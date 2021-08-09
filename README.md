@@ -18,7 +18,7 @@ Instructions for the compilation of the project - Warning: It may require many G
     ```
 
 *NOTES: The serial compilation is extremely slow, so the following code is suggested:
-    `make -j #Nuber of available CPUs#`
+    `make -j #Number of available CPUs#`
 
 -----------------------------------------------------------------------------------------------------
 

@@ -5,6 +5,7 @@
 /*-------------------------------------------- Licence ---------------------------------------------*/
 //
 // © Andrea Marchesin 2020 (andrea.marchesin@studenti.polito.it) for Politecnico di Torino
+// © Alessio Nicola 2021 (alessio.nicola@studenti.polito.it) for Politecnico di Torino
 //
 /*--------------------------------------------------------------------------------------------------*/
 #include "SchedulingASAP.h"
@@ -229,7 +230,11 @@ void SchedulingASAP::addNewInstruction(Instruction &I)
         //Check if the input function is a NOT
         if(isThisNot(I)){
             errs() << "\tNOT instruction detected!\n";
-            changeParentInNOT((int *)I.getOperand(0),I.getOpcodeName(),(int *) &I);
+
+            std::string parentType;
+            parentType=IT.getType((int *)I.getOperand(0));
+
+            changeParentInNOT((int *)I.getOperand(0),parentType,(int *) &I);
 
         } else if(I.getOpcode()==Instruction::Shl || I.getOpcode()==Instruction::LShr || I.getOpcode()==Instruction::AShr){
             //A shift operation has been fetched
@@ -417,7 +422,7 @@ void SchedulingASAP::addNewInstruction(Instruction &I)
                         }                        
                     }
 
-                    //Check if ah High Impedance condition is provided
+                    //Check if an High Impedance condition is provided
                     if(isa <StoreInst> (currentInst))
                     {
                         if(ConstantInt* CI=dyn_cast<ConstantInt>(currentInst.getOperand(0))){
@@ -681,7 +686,7 @@ void SchedulingASAP::changeParentInNOT(int* const parentName, std::string operat
     //Get the name of the negative logic corresponding to operation
     std::string negativeOperator=changeLogic.getNegativeLogic(operation);
 
-    errs()<< "The negative operator for " << operation << " is: " <<negativeOperator;
+    errs()<< "The negative operator for " << operation << " is: " <<negativeOperator << "\n";
 
     //Change the operator inside the Instruction Table
     IT.ChangeOperatorAndDestReg(parentName,negativeOperator,newParentName);

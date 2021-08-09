@@ -5,6 +5,7 @@
 /*-------------------------------------------- Licence ---------------------------------------------*/
 //
 // © Andrea Marchesin 2020 (andrea.marchesin@studenti.polito.it) for Politecnico di Torino
+// © Alessio Nicola 2021 (alessio.nicola@studenti.polito.it) for Politecnico di Torino
 //
 /*--------------------------------------------------------------------------------------------------*/
 
@@ -27,25 +28,25 @@ using namespace llvm;
 
 namespace octantis{
 
-  // OctantisPass
-  struct OctantisPass : public FunctionPass {
+// OctantisPass
+struct OctantisPass : public FunctionPass {
     static char ID; // Pass identification, replacement for typeid
     OctantisPass() : FunctionPass(ID) {}
 
     void compileAndPrint(){
-          //Here the definition of the LiM COMPILER
-          LiMCompiler Compiler(ASAPScheduler.getIT());
+        //Here the definition of the LiM COMPILER
+        LiMCompiler Compiler(ASAPScheduler.getIT());
 
-          /* DISABLED UNTIL THE INPUT INTERFACES WITH DEXIMA ARE NOT STABLE! */
-          //PrintDexFile Printer(&(Compiler.MemArray), &(Compiler.FSMLim));
-          //Printer.print();
-          /* --------------------------------------------------------------- */
-      }
+        /* DISABLED UNTIL THE INPUT INTERFACES WITH DEXIMA ARE NOT STABLE! */
+        PrintDexFile Printer(&(Compiler.MemArray), &(Compiler.FSMLim));
+        Printer.print();
+        /* --------------------------------------------------------------- */
+    }
 
     void getAnalysisUsage(AnalysisUsage &AU) const override {
-          AU.setPreservesCFG();
-          AU.addRequired<LoopInfoWrapperPass>();
-        }
+        AU.setPreservesCFG();
+        AU.addRequired<LoopInfoWrapperPass>();
+    }
 
     // SCHEDULING
     bool runOnFunction(Function &F) override {
@@ -120,8 +121,8 @@ namespace octantis{
 
         }
 
-      compileAndPrint();
-      return false;
+    compileAndPrint();
+    return false;
     }
 
 
@@ -132,7 +133,7 @@ private:
     //Identification of loops
     bool isThereALoop=false;
 
-  };
+};
 
 
 }// End Octantis' namespace
@@ -142,6 +143,5 @@ using namespace octantis;
 
 char OctantisPass::ID = 0;
 static RegisterPass<OctantisPass> X("octantisPass", "Description of OctantisPass",
-                             false /* Only looks at CFG */,
-                             false /* Analysis Pass */);
-
+                                    false /* Only looks at CFG */,
+                                    false /* Analysis Pass */);
