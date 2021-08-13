@@ -10,6 +10,7 @@ add_llvm_library( LLVMOctantis MODULE BUILDTREE_ONLY
   AdditionalLogicPorts.cpp
   LiMCompiler.cpp
   PrintDexFile.cpp
+  PrintVhdlFile.cpp
   OctantisPass.cpp
 
 #  DEPENDS
