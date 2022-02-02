@@ -38,12 +38,14 @@ void LiMArray::addNewRow(int* const &rowName, std::string &rowType, int &rowLeng
     // It is convenient to distinguish from real memory input cell (multiple of 4)
     tmpRow.inputConnections.push_back((int*)0xdef);
 
+    tmpRow.inputConnectionsType.push_back("none");
+
     limArray.insert({rowName,tmpRow});
 
 }
 
 ///Function to add a new LiM Row inside the array
-void LiMArray::addNewLiMRow(int* const &rowName, std::string &rowType, std::list<std::string> &addLogic, int &rowLength, int* const &src){
+void LiMArray::addNewLiMRow(int* const &rowName, std::string &rowType, std::list<std::string> &addLogic, int &rowLength, int* const &src, std::string const &conType){
 
     LiMRow tmpRow;
     tmpRow.rowType=rowType;
@@ -57,18 +59,20 @@ void LiMArray::addNewLiMRow(int* const &rowName, std::string &rowType, std::list
 
     tmpRow.inputConnections.push_back(src);
 
+    tmpRow.inputConnectionsType.push_back(conType);
+
     limArray.insert({rowName,tmpRow});
 }
 
 ///Function to add a new Row inside the array: partial result row
 ///      NOTEs: The "load" type has to be defined somewhere else
-void LiMArray::addNewResultRow(int* const &rowName, int &rowLength, int* const &src){
+void LiMArray::addNewResultRow(int* const &rowName, int &rowLength, int* const &src, std::string const &conType){
 
     LiMRow tmpRow;
     tmpRow.rowType="load";
     tmpRow.rowLength=rowLength;
     tmpRow.inputConnections.push_back(src);
-
+    tmpRow.inputConnectionsType.push_back(conType);
     limArray.insert({rowName,tmpRow});
 
 }
@@ -95,7 +99,9 @@ bool LiMArray::changeLiMRowType(int* const &rowName, std::string &newRowType, st
             }
         }
 
+        //errs() << "\t\t" << rowName << " is of type " << limArrayIntIT->second.rowType << "\n";
         limArrayIntIT->second.rowType=(newRowType);
+        //errs() << "\t\t"  << rowName << " becomes " <<limArrayIntIT->second.rowType << "\n";
 
         ///Check the presence of additional operators
         if(!additionalOperators.empty())
@@ -138,19 +144,21 @@ std::map<int * const, LiMArray::LiMRow>::iterator LiMArray::findRow(int* const &
 }
 
 ///Function to add a new input connection to a LiM row if not present
-void LiMArray::addNewInputConnection(int* const &rowName, int* const &srcRowName){
+void LiMArray::addNewInputConnection(int* const &rowName, int* const &srcRowName, std::string const &conType){
 
     //Iterator over LiM Array
     std::map<int * const, LiMRow>::iterator limArrayIntIT=findRow(rowName);
 
     //Set an alias for the list
     std::list<int *> * connectionsList=&(limArrayIntIT->second.inputConnections);
+    std::list<std::string> * conTypeList = &(limArrayIntIT->second.inputConnectionsType);
 
     //Add the new input connection
     if((*connectionsList).size()==1 || find((*connectionsList).begin(), (*connectionsList).end(),
                                           srcRowName) == (*connectionsList).end()){
         //errs() << "\taddNewInputConnection: source not found!\n";
         (*connectionsList).push_back(srcRowName);
+        (*conTypeList).push_back(conType);
     } else {
         //errs() << "\taddNewInputConnection: source found!\n";
     }
@@ -190,6 +198,13 @@ int LiMArray::getDimensions(){
     return limArray.size();
 }
 
+
+void LiMArray::deleteLiMRow(int* const &rowName){
+
+    limArrayIT = limArray.find(rowName);
+    limArray.erase(limArrayIT);
+
+}
 //----------------------------DEBUG FUNCTIONS---------------------------
 
 void LiMArray::printLiMArray(){
@@ -200,11 +215,20 @@ void LiMArray::printLiMArray(){
     //Iteratore over the input connection list
     std::list<int *>::iterator inList;
 
+    //Iteratore over the input connection type list
+    std::list<std::string>::iterator inTypeList;
+
     //Iterator over the additional logic list
     std::list<std::string>::iterator inAddList;
 
     //Current LiM row
     int rowCount=0;
+
+    int addN = 0;
+    int loadN = 0;
+    int sdivN = 0;
+    int sXor = 0;
+    int nMux = 0;
 
     //Check if the map is empty:
     if(limArray.size()==0)
@@ -212,8 +236,23 @@ void LiMArray::printLiMArray(){
         errs()<< "\tERROR! The input map is empty!";
     } else {
         for(limArrayDebugIT=limArray.begin(); limArrayDebugIT!=limArray.end();++limArrayDebugIT){
+
+            if(((limArrayDebugIT->second).inputConnections).size() == 3){
+                nMux++;
+            }
+
             errs() << "Row " << rowCount << ", name " << limArrayDebugIT->first << ": Type " << (limArrayDebugIT->second).rowType
                    << ", length " << (limArrayDebugIT->second).rowLength << " additional integrated logic ";
+
+            if((limArrayDebugIT->second).rowType == "add"){
+                addN++;
+            }else if((limArrayDebugIT->second).rowType == "load"){
+                loadN++;
+            }else if((limArrayDebugIT->second).rowType == "sdiv"){
+                sdivN++;
+            }else if((limArrayDebugIT->second).rowType == "xor"){
+                sXor++;
+            }
 
             if(((limArrayDebugIT->second).additionalLogic).empty())
             {
@@ -229,10 +268,19 @@ void LiMArray::printLiMArray(){
             }
 
 
-            errs() << "inputs\t";
+            errs() << "\ninputs\t";
             for(inList=((limArrayDebugIT->second).inputConnections).begin();inList!=((limArrayDebugIT->second).inputConnections).end(); ++inList){
                 errs() << *inList;
                 if(inList == ((limArrayDebugIT->second).inputConnections).begin())
+                    errs() << " \t";
+                else
+                    errs() << " ";
+            }
+
+            errs() << "\ntype  \t";
+            for(inTypeList=((limArrayDebugIT->second).inputConnectionsType).begin();inTypeList!=((limArrayDebugIT->second).inputConnectionsType).end(); ++inTypeList){
+                errs() << *inTypeList;
+                if(inTypeList == ((limArrayDebugIT->second).inputConnectionsType).begin())
                     errs() << " \t";
                 else
                     errs() << " ";
@@ -242,6 +290,9 @@ void LiMArray::printLiMArray(){
             ++rowCount;
 
         }
+
+        errs() << addN << " add rows, " << loadN << " load rows, " << sdivN << " sdiv rows " << sXor << " xor rows\n";
+        errs() << nMux << " rows with muxes\n";
     }
 
 }

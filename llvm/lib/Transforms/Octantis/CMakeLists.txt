@@ -3,14 +3,23 @@ if(WIN32 OR CYGWIN)
 endif()
 
 add_llvm_library( LLVMOctantis MODULE BUILDTREE_ONLY
+  PrintConfig.cpp
   InstructionTable.cpp
+  AccessPattern.cpp
   SchedulingASAP.cpp
   LiMArray.cpp
   FiniteStateMachine.cpp
   AdditionalLogicPorts.cpp
   LiMCompiler.cpp
   PrintDexFile.cpp
+  PrintCadFile.cpp
   PrintVhdlFile.cpp
+  PointerInfoTable.cpp
+  LoopInfoTable.cpp
+  InstructionMap.cpp
+  ASAP.cpp
+  LimCompilerNew.cpp
+  CollectInfo.cpp
   OctantisPass.cpp
 
 #  DEPENDS

@@ -9,6 +9,7 @@
 //
 /*--------------------------------------------------------------------------------------------------*/
 #include "SchedulingASAP.h"
+#include "CollectInfo.h"
 
 //LLVM Include Files
 #include "llvm/IR/Function.h"
@@ -26,7 +27,7 @@ using namespace llvm;
 using namespace octantis;
 
 
-///Default constructor
+///Constructor
 SchedulingASAP::SchedulingASAP()
 {
 
@@ -38,7 +39,8 @@ SchedulingASAP::SchedulingASAP(Instruction &I)
     addNewInstruction(I);
 }
 
-///Function useful to add a new LLVM IR instruction to the Intruction Table
+///Function useful to add a new LLVM IR instruction to the Intruction Table,
+///SUPPOSING THEY MUST BE EFFECTIVELY SCHEDULED 
 void SchedulingASAP::addNewInstruction(Instruction &I)
 {
     Instr i=identifyInstr(I);
@@ -49,38 +51,22 @@ void SchedulingASAP::addNewInstruction(Instruction &I)
     {
     case alloc:
     {
+        
         //Number of allocated data (e.g. INT=1, VECTOR=N)
-        int arraySize=1;
-
-        errs() << "Alloca detected: " << (int*) &I <<"\n";
-        AllocaInst *a=dyn_cast<AllocaInst>(&I);
-        Type *ty=(a->getAllocatedType());
-
-       if(ty->isArrayTy())
-       {
-           errs()<< "\tArray detected!\n";
-           arraySize= (int) ty->getArrayNumElements();
-           errs()<< "\tDimension: "<< arraySize << "\n";
-       }
+        int arraySize = infoCollection->getArraySize((int*)(&I));
 
         IT.AddAllocaInstructionToList(Timer, (int *) &I, arraySize);
+    
     }
         break;
 
     case load:
     {
-        errs() << "Load detected: " << (int*) &I <<"\n";
+        errs() << "Load detected: " << (int*) &I <<"\n"; 
 
-        int * parentReg;
+        /*
         int index=0; //Default value for traditional load instructions (no array)
         int arrayFactor=1; //Default value for the allocation of only one row (no array)
-        bool inputLine=false; //Flag for the identification of input lines
-
-        //Initialization of the accumulation detection structure
-        accumulationInfo.srcReg=(int *) I.getOperand(0);
-        accumulationInfo.valid=false;
-        accumulationInfo.validityCnt=1; //First condition verified
-
         //Check if the element refers to an iterator (for loops)
         itVariablesMapIT=itVariablesMap.find((int*)I.getOperand(0));
         if(itVariablesMapIT!=itVariablesMap.end())
@@ -130,36 +116,56 @@ void SchedulingASAP::addNewInstruction(Instruction &I)
             if (!IT.isParentValid(parentReg,index)){
                 parentReg = getRealParent(parentReg);
             }
-
-
-
-            //Check if the loaded data belogs to an input line
-            if(!(inputFunctParam.empty()))
-            {
-                inputFunctParamIT=find(inputFunctParam.begin(),inputFunctParam.end(),parentReg);
-
-                if(inputFunctParamIT!=inputFunctParam.end())
-                {
-                    errs() << "Input line detected!\n";
-                    inputLine=true;
-                }
-            }
-
-            //Check if the instruction is inside a loop and defining if a load considers
-            //an input line
-            if(inputLine==true){
-
-                std::list<std::string> tmpList;
-                tmpList.push_back("input_line");
-                IT.AddInstructionToListWithSpecs(Timer, Timer, I.getOpcodeName(), tmpList, (int *) &I, parentReg, nullptr,arrayFactor);
-
-            } else {
-
-                IT.AddInstructionToList(Timer, Timer, I.getOpcodeName(), (int *) &I, parentReg, nullptr, arrayFactor);
-            }
-
-            aliasMap.insert(std::pair<int * const, int * const>((int *)&I, parentReg)); //Check the order
         }
+            */
+
+        int * parentReg;
+        bool inputLine=false; //Flag for the identification of input lines
+
+        //Initialization of the accumulation detection structure
+        accumulationInfo.srcReg=(int *) I.getOperand(0);
+        accumulationInfo.valid=false;
+        accumulationInfo.validityCnt=1; //First condition verified
+
+        //Getting the allocated register related to the loaded alias register
+        int * allocatedReg = infoCollection->getAllocatedReg((int*)(I.getOperand(1)));
+        //arrayFactor field to IT 
+        int size = 1;
+
+        //Check if the loaded data belogs to an input line
+        if(!(inputFunctParam.empty()))
+        {
+            inputFunctParamIT=find(inputFunctParam.begin(),inputFunctParam.end(),parentReg);
+
+            if(inputFunctParamIT!=inputFunctParam.end())
+            {
+                errs() << "Input line detected!\n";
+                inputLine=true;
+            }
+        }
+
+        //Check if the instruction is inside a loop and defining if a load considers an input line
+        if(inputLine==true){
+
+            std::list<std::string> tmpList;
+            tmpList.push_back("input_line");
+            IT.AddInstructionToListWithSpecs(Timer, Timer, I.getOpcodeName(), tmpList, (int *) &I, parentReg, nullptr, size);
+
+        }else{
+
+            //If the element is present in the map
+            if(infoCollection->isArray(allocatedReg)){
+                size = infoCollection->getArraySize((int*)(I.getOperand(1)));
+            }else{
+                size = 1;
+            }
+
+            IT.AddInstructionToList(Timer, Timer, I.getOpcodeName(), (int *) &I, allocatedReg, nullptr, size);
+            
+        }
+
+        //aliasMap.insert(std::pair<int * const, int * const>((int *)&I, parentReg)); //Check the order
+        
     }
         break;
 
@@ -167,7 +173,7 @@ void SchedulingASAP::addNewInstruction(Instruction &I)
     {
         errs() << "Store detected: " << (int*) &I <<"\n";
 
-        int * destReg;
+        /*int * destReg;
         int index=0; //Default value for traditional load instructions (no array)
 
         //Check if the parsed instruction refers to an array
@@ -186,39 +192,40 @@ void SchedulingASAP::addNewInstruction(Instruction &I)
 
         } else {
             destReg=(int *)I.getOperand(1);
-        }
+        }*/
 
         //Update of the accumulation detection structure
-        if(accumulationInfo.validityCnt==2 && accumulationInfo.srcReg==(int*)I.getOperand(1))
+        if(accumulationInfo.validityCnt == 2 && accumulationInfo.srcReg == (int*)I.getOperand(1))
         {
             //The previous operations were a load and an addition and the accumulation
             //conditions are all verified
-            accumulationInfo.valid=true;
+            accumulationInfo.valid = true;
 
         }
 
         //Check if the operation is preformed inside a loop: detection of accumulations!
-        if(loopInfo.valid==true)
-        {
-            if(accumulationInfo.valid==true)
-            {
-                errs() << "\tAccumulation identified!\n";
-                std::string tmpString="accumulation";
+        /*if(infoCollection->isLoopBody(I.getParent())){
+            if(accumulationInfo.valid){
 
+                //Insert code for new accumulation management
+
+                errs() << "\tAccumulation identified!\n";
+                std::string tmpString = "accumulation";
+     
                 //Add specification inside the add operation:
                 IT.AddSpecToList((int *)I.getOperand(0),tmpString);
 
             }
-        }
+        }*/
 
         //Invalidate the data previously declared through 'alloca' statement
-        IT.invalidateParent(destReg,index);
+        //IT.invalidateParent(destReg,index);
 
         //Update the alias map!!!!
 
         //Set the relation between the newest data and the invalid one
         //aliasMap.insert(std::pair<int * const, int * const>((int *)I.getOperand(1), (int *)I.getOperand(0))); //Check the order
-        aliasMap.insert(std::pair<int * const, int * const>((int *)destReg, (int *)I.getOperand(0))); //Check the order
+        //aliasMap.insert(std::pair<int * const, int * const>((int *)destReg, (int *)I.getOperand(0))); //Check the order
 
     }
         break;
@@ -279,13 +286,16 @@ void SchedulingASAP::addNewInstruction(Instruction &I)
                     accumulationInfo.validityCnt-=1; //Second condition NOT verified
                 }
 
-                if(loopInfo.valid==true)
-                {         
-                    IT.AddInstructionToList(Tex, Tex, I.getOpcodeName(), (int *) &I, (int *)I.getOperand(0), (int *)I.getOperand(1),loopInfo.iterations);
-                } else {
-                    int iterations=1;
-                    IT.AddInstructionToList(Tex, Tex, I.getOpcodeName(), (int *) &I, (int *)I.getOperand(0), (int *)I.getOperand(1),iterations);
-                }
+                //If the instruction is inside a loop body, the number of iterations is set to 0 in order to let the binder 
+                //properly recognize the indexes
+                /*if(infoCollection->isLoopBody(I.getParent())){     
+                    int iterations = 0;    
+                    IT.AddInstructionToList(Tex, Tex, I.getOpcodeName(), (int *) &I, (int *)I.getOperand(0), (int *)I.getOperand(1), iterations);
+                }else{
+                    //if the instruction is outside of a loop, iterations is set to 1
+                    int iterations = 1;
+                    IT.AddInstructionToList(Tex, Tex, I.getOpcodeName(), (int *) &I, (int *)I.getOperand(0), (int *)I.getOperand(1), iterations);
+                }*/
 
 
         }
@@ -295,7 +305,7 @@ void SchedulingASAP::addNewInstruction(Instruction &I)
 
     case ptr:
     {
-        errs() << "Pointer detected: " << (int*) &I <<"\n";
+        /*errs() << "Pointer detected: " << (int*) &I <<"\n";
 
         int index;
 
@@ -332,7 +342,7 @@ void SchedulingASAP::addNewInstruction(Instruction &I)
         infoAboutPtr.ptrName=(int *)&I;
         infoAboutPtr.srcReg=(int *) GEP->getPointerOperand();
         infoAboutPtr.index=index;
-        infoAboutPtr.valid=true;
+        infoAboutPtr.valid=true;*/
     }
         break;
 
@@ -551,14 +561,14 @@ void SchedulingASAP::addNewInstruction(Instruction &I)
     case branch:
     {
         //To be implemented: actually it doesn't do anything!
-        errs() << "Branch detected: " << (int*) &I <<"\n";
+        //errs() << "Branch detected: " << (int*) &I <<"\n";
     }
         break;
 
     case sext:
     {
         //Sign extension: not actually relevant.
-        errs() <<"Sign extension detected: " << (int*) &I <<"\n";
+        /*errs() <<"Sign extension detected: " << (int*) &I <<"\n";
 
         //Update of the label associated to the loaded data
         int * parentReg;
@@ -577,7 +587,7 @@ void SchedulingASAP::addNewInstruction(Instruction &I)
 
         } else {
             llvm_unreachable("Error in SchedulingASAP: in aliasMap looking for a not present varible.");
-        }
+        }*/
 
     }
         break;
@@ -765,6 +775,9 @@ void SchedulingASAP::parseLoopInfo(BasicBlock &BB){
     errs() << "Starting to parse Loop Info...\n";
 
     //A loop has been identified
+    
+
+    //loopInfoStruct loopInfo;
     loopInfo.valid=true;
     loopInfo.loopHeader=(int *) &BB;
 
@@ -772,9 +785,7 @@ void SchedulingASAP::parseLoopInfo(BasicBlock &BB){
     for (Instruction &I : BB) {
 
         Instr i=identifyInstr(I);
-
         errs()<<"Fetched (inside Loop): " << I << "; recognized: " << i << "\n";
-
         switch(i)
         {
             case load:
@@ -784,8 +795,18 @@ void SchedulingASAP::parseLoopInfo(BasicBlock &BB){
                 //its value.
                 //  NOTE: the index strarting from 0 is an
                 //        assumption that has to be removed!!
-                itVariablesMap.insert({(int*)I.getOperand(0),0});
 
+                //Find the integer initialization of the iterator and inserting it into itVariableMap
+                initValuesMapIT = initValuesMap.find((int*)I.getOperand(0));
+                if (initValuesMapIT!=initValuesMap.end())
+                {
+                    itVariablesMap.insert({(int*)&I, initValuesMapIT->second});
+                }
+
+                //aliasMap.insert(std::pair<int * const, int * const>((int *)&I, (int*)I.getOperand(0))); //Check the order
+
+                
+                
             }
                 break;
 
@@ -795,7 +816,11 @@ void SchedulingASAP::parseLoopInfo(BasicBlock &BB){
                 //loop iterations
                 Value *iter = I.getOperand(1);
                 ConstantInt* CI = dyn_cast<ConstantInt>(iter);
-                int iterations=CI->getSExtValue();
+
+                //Get iterator initial value
+                int initIteratorValue = (itVariablesMap.find((int*)(I.getOperand(0)))->second);
+
+                int iterations=CI->getSExtValue()-initIteratorValue;
 
                 errs() << "The iterations of the loop statement are: " << iterations << "\n";
                 loopInfo.iterations=iterations;
@@ -822,6 +847,70 @@ void SchedulingASAP::parseLoopInfo(BasicBlock &BB){
 
         }
 
+    }
+
+    //loopInfoMap.insert(std::pair<BasicBlock const *, loopInfoStruct *> {&BB, &loopInfo});
+    
+}
+
+
+///Function to parse information contained in a Loop Latch
+void SchedulingASAP::parseLoopLatchInfo(BasicBlock &BB){
+
+    errs() << "Starting to parse Loop Latch Info...\n";
+
+    // Parsing the internal instructions
+    for (Instruction &I : BB) {
+
+        Instr i=identifyInstr(I);
+        errs()<<"Fetched (inside Loop): " << I << "; recognized: " << i << "\n";
+        switch(i)
+        {
+            /*case load:
+            {
+                //This is the variable of the counter
+                //Update of the associated map to keep track
+                //its value.
+                //  NOTE: the index strarting from 0 is an
+                //        assumption that has to be removed!!
+
+                //Find the integer initialization of the iterator and inserting it into itVariableMap
+                initValuesMapIT = initValuesMap.find((int*)I.getOperand(0));
+                if (initValuesMapIT!=initValuesMap.end())
+                {
+                    itVariablesMap.insert({(int*)&I, initValuesMapIT->second});
+                }
+
+                //aliasMap.insert(std::pair<int * const, int * const>((int *)&I, (int*)I.getOperand(0))); //Check the order
+
+                
+                
+            }
+                break;*/
+
+            case binary:
+            {
+                //Condition through which determine the increment of an iterator
+                Value *iter = I.getOperand(1);
+                ConstantInt* CI = dyn_cast<ConstantInt>(iter);
+
+                
+
+                int increment=CI->getSExtValue();
+
+                errs() << "The iterator increment is: " << increment << "\n";
+                
+
+            }
+                break;
+
+            default:
+            {
+                //llvm_unreachable("SchedulingASAP error: current instruction inside loop not recognized.\n");
+                break;
+            }
+
+        }
     }
 }
 

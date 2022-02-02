@@ -37,9 +37,9 @@ namespace octantis {
 class PrintVhdlFile {
 public:
   PrintVhdlFile(LiMArray *compArray, FiniteStateMachine *compFSM)
-      : compArray(compArray), compFSM(compFSM){};
+      : compArray(compArray), compFSM(compFSM), entries(compArray->getDimensions()){};
 
-  /// It prints the .vhd file
+  /// It prints the .vhd file for both the memory entity and its testbench
   void print();
 
 private:
@@ -48,18 +48,24 @@ private:
   void mergeToOutFile(raw_fd_ostream *destFD, raw_fd_ostream *sourceFD,
                       std::string &sourceName, bool closeSourceFD);
 
+  /// Function useful in order to add the memory array types and declaration in the first part of the architecture section
+  void printMemArraysDec(raw_fd_ostream *const &sigFd);
+
+  /// It prints the series of processes needed in order to properly carry out writing and reading operations, but also the entire algorithm
+  void printProcesses(raw_fd_ostream *const &compFd, raw_fd_ostream *const &sigFd);
+
   /// It returns true if the input LiMRow is has an input which is not the output of another LiMRow
   bool isInputRow(int *const &rowName);
 
-  /// returns true if the output of the input LiMRow is given in input to another row limcell
-  bool isInputToAnotherLimCell(int * const &rowName);
+  /// It is useful to get the total number of data that must be retrieved from the outside and written into the memory before starting the algoritm execution
+  std::string getNumberInputs();
 
-  /// returns true if the output of the input LiMRow is given in input to another row mux
-  bool isInputToMux(int * const &rowName);
+  /// It is useful in order to know the amount of data that can be read once the algorithm has finished
+  std::string getNumberOutputs();
 
   /// It prints the correct code for any BITWISE lim cell
   void printBitwise(int *const &rowName, int *const &srcRow1,
-                    int *const &srcRow2, std::string &limRowComp,
+                    int *const &srcRow2, std::string &inputConnectionType,
                     std::string &bitwiseOp, raw_fd_ostream *const &sigFd,
                     raw_fd_ostream *const &compFd);
 
@@ -73,7 +79,7 @@ private:
   /// input
   /// so that 2 input bits for the logic are available.
   void printBitwiseMux2to1(std::string &bitwiseOp, int *const &rowName,
-                           int *const &srcRow1, std::string &limRowComp,
+                           int *const &srcRow1, std::string &inputConnectionType1, std::string &inputConnectionType2,
                            int *const &srcRow2, int *const &srcRow3,
                            raw_fd_ostream *const &sigFd,
                            raw_fd_ostream *const &compFd);
@@ -81,12 +87,16 @@ private:
   /// It prints the correct code for an SUM lim cell with a 2to1 mux in input
   /// so that 2 input bits for the logic are available.
   void printAddMux2to1(int *const &rowName, int *const &srcRow1,
-                       std::string &limRowComp, int *const &srcRow2,
+                       std::string &inputConnectionType1, std::string &inputConnectionType2, int *const &srcRow2,
                        int *const &srcRow3, raw_fd_ostream *const &sigFd,
                        raw_fd_ostream *const &compFd);
 
   /// It prints the correct code for an SUM lim cell
-  void printAdd(int *const &rowName, int *const &srcRow1, int *const &srcRow2,
+  void printAdd(int *const &rowName, int *const &srcRow1, int *const &srcRow2, std::string &inputConnectionType,
+                raw_fd_ostream *const &sigFd, raw_fd_ostream *const &compFd);
+
+  /// It prints the correct code for a right shift lim cell
+  void printShiftRight(int *const &rowName, int *const &srcRow1, int *const &srcRow2,
                 std::string &limRowComp, raw_fd_ostream *const &sigFd,
                 raw_fd_ostream *const &compFd);
 
@@ -101,6 +111,8 @@ private:
   /// inside the .vhd file
   void printArchitecture();
 
+  /// It prints the testbench for the .vhd LiM component created
+  void printTestbench();
 private:
   /// Backup variables for the LiM Array
   LiMArray *compArray;
@@ -108,6 +120,10 @@ private:
 
   /// Iterator over LiM Array
   std::map<int *const, LiMArray::LiMRow>::iterator limArrayIT;
+  std::map<int, std::list<int *>>::iterator FSMIT;
+
+  ///Iterator over the list of <int *> of the FSM
+  std::list <int *>::iterator FSM_ListIT;
 
   /// The following file descriptors are used in order to define different parts
   /// of the final .vhd file and will be merged in outFile, which is the final
@@ -126,8 +142,15 @@ private:
   /// the ARCHITECTURE part, after the BEGIN statement
   raw_fd_ostream *compInst;
 
+  raw_fd_ostream *tbFile;
+
   // The parallelism should refer to a configuration file
-  int par = 32;
+  int par = 8;
+
+  // The number of words inside the memory
+  int entries;
+
+  std::list<int*> resultRowList;
 };
 
 } // namespace octantis

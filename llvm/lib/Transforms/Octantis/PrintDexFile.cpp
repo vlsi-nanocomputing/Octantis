@@ -71,6 +71,8 @@ void PrintDexFile::printConstants(){
     //in modo da renderlo modulare per future implementazioni
     //di file di configurazione octantis e/o interfaccia grafica
 
+    errs() << "\nprint constants init\n";
+
     *outFile << "begin constants\n\n";
     // Printing the CONSTANTS section of Dexima's conf.file
 
@@ -103,10 +105,14 @@ void PrintDexFile::printConstants(){
 
     *outFile << "end constants\n\n";
 
+    errs() << "\nprint constants fin\n";    
+
 }
 
 /// It prints the Init section
 void PrintDexFile::printInit(){
+
+    errs() << "\nprint Init init\n";
     
     *outFile << "begin init\n\n";
     // Printing the INIT section of Dexima's configuration file
@@ -120,10 +126,14 @@ void PrintDexFile::printInit(){
 
     *outFile << "\nend init\n\n";
 
+    errs() << "\nprint Init fin\n";
+
 }
 
 /// It prints the Lim section
 void PrintDexFile::printLiM(){
+
+    errs() << "\nprint LiM init\n";
     
     // LiM Map section support file
     std::string outLiMMapName =".outLiMMap.dex";
@@ -165,7 +175,7 @@ void PrintDexFile::printLiM(){
         limArrayIT!=((*compArray).limArray).end(); ++limArrayIT){
         
         // DEBUG //
-        //errs() << "\nLimArray cycle\n";
+        errs() << "\nLimArray cycle " << limArrayIT->first << "\n";
         // END DEBUG //
         
         identifyLIMRowAndPrint(currentRow, &limArrayIT);
@@ -183,6 +193,8 @@ void PrintDexFile::printLiM(){
     *outFile << "\tend map\n\n";
     
     *outFile << "end LiM\n\n";
+
+    errs() << "\nprint LiM fin\n";
 
 }
 
@@ -202,6 +214,8 @@ void PrintDexFile::printMap(){
 
 /// It prints the Instructions section
 void PrintDexFile::printInstructions(){
+
+    errs() << "\nprint Instructions init\n";
 
     // Helps to recognize the first element of FSMIT
     int i=0;
@@ -314,16 +328,22 @@ void PrintDexFile::printInstructions(){
 
     *outFile << "end instructions\n\n";
 
+    errs() << "\nprint Instructions fin\n";
+
 }
 
 /// It prints the Code section
 void PrintDexFile::printCode(std::string &outCodeName){
+
+    errs() << "\nprint code init\n";
 
     *outFile << "begin code\n";
     
     mergeToOutFile(outFile, outCode, outCodeName, true);
 
     *outFile << "end code";
+
+    errs() << "\nprint code fin\n";
 
 }
 
@@ -343,7 +363,7 @@ void PrintDexFile::identifyLIMRowAndPrint(int &currentRow,
         OpImplIT=LimOperations.find(((*mapIT)->second).rowType);
 
     // DEBUG //
-    //errs()<< "The data from the Map is: " << ((*mapIT)->second).rowType <<"\n";
+    errs()<< "The data from the Map is: " << ((*mapIT)->second).rowType <<"\n";
     // END DEBUG //
 
     // Check if it is a recognized operation
@@ -352,12 +372,12 @@ void PrintDexFile::identifyLIMRowAndPrint(int &currentRow,
         opType=OpImplIT->second;
         
         // DEBUG //
-        //errs()<<"Operation type: "<<opType<<"\n";
+        errs()<<"Operation type: "<<opType<<"\n";
         // END DEBUG //
         
         if(opType=="null"){
             // DEBUG //
-            //errs() << "A load operation is considered!\n";
+            errs() << "A load operation is considered!\n";
             // END DEBUG //
 
             // Check if there are input operands
@@ -465,16 +485,23 @@ void PrintDexFile::getNameAndIndexOfSourceRow(int* const &sourceRow,
     std::string &sourceCellName, int &sourceCellRow){
     
     // DEBUG //
-    //errs()<<"\nFinding: "<<sourceRow<<"\n";
+    errs()<<"\nFinding: "<<sourceRow<<"\n";
+    for(auto IT=namesMap.begin(); IT!=namesMap.end(); ++IT){
+        errs() << IT->first << "\n";
+    }
     // END DEBUG //
     namesMapIT=namesMap.find(sourceRow);
+    bool isPresent = (namesMapIT!=namesMap.end()) ? true : false;
+    errs() << isPresent << "\n";
 
-    if(namesMapIT!=namesMap.end())
+    if(isPresent)
     {
+
         std::string sourceName=(namesMapIT->second).name;
 
         //Check if the source cell is MIXED Type
         auto position = sourceName.find("Mux");
+
         if(position != std::string::npos){
 
             sourceName = "Mux";
@@ -482,6 +509,7 @@ void PrintDexFile::getNameAndIndexOfSourceRow(int* const &sourceRow,
 
         sourceCellName=sourceName;
         sourceCellRow=(namesMapIT->second).rowIndex;
+        errs() << "found\n";
     } else {
         llvm_unreachable("Error in PrintDexFile: Reference to namesMap NOT VALID.");
     }
@@ -491,6 +519,8 @@ void PrintDexFile::getNameAndIndexOfSourceRow(int* const &sourceRow,
 /// it's useful for the identification of the output pin name
 /// of the row in case of is an Arithmetic Operation.
 void PrintDexFile::getOutPinName(std::string &opSrc, std::string &outPinName){
+
+    errs() << "\nEntering pin\n";
 
     std::string opSrcInt=opSrc;
     std::map<std::string, std::string>::const_iterator tmpIT;
@@ -511,6 +541,8 @@ void PrintDexFile::getOutPinName(std::string &opSrc, std::string &outPinName){
     } else {
         outPinName="OUT";
     }
+
+    errs() << "\nExiting pin\n";
 }
 
 /// It prints the correct code for any BITWISE lim cell with a 2to1 mux in input
@@ -576,6 +608,8 @@ void PrintDexFile::printBITWISEMux2to1(std::string &bitwiseOp, int &currentRow,
 void PrintDexFile::printMIXED(std::string &bitwiseOp, int &currentRow,
     int* const &nameRow, int* const &nameSrc, std::list<std::string> &operators){
 
+    errs() << "\nEntering printMIXED\n";
+
     // Support variable to store the Upper case string of bitwiseOp
     std::string implementedCell;
 
@@ -608,6 +642,8 @@ void PrintDexFile::printMIXED(std::string &bitwiseOp, int &currentRow,
     //Also here the parallelism should refer to
     //a configuration file
     for(int i=0; i<31; ++i){
+
+        errs() << "\nEntering the loop\n";
 
         // If the first MSB is considered
         if(i==0){

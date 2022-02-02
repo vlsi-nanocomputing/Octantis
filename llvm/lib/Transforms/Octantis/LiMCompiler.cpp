@@ -265,7 +265,7 @@ LiMCompiler::LiMCompiler(InstructionTable & ptrIT):zeroAddr(0){
 
                                                 //Add new input connection for sourceReg1
                                                 errs() << "\tChange LiM row performed!\n";
-                                                MemArray.addNewInputConnection(*aListIT2, *aListIT1);
+                                                /////////MemArray.addNewInputConnection(*aListIT2, *aListIT1);
 
                                                 //Update the available source register with the corresponding LiM structure (LIFO approach)
                                                 effInForDestReg=*aListIT2;
@@ -278,7 +278,7 @@ LiMCompiler::LiMCompiler(InstructionTable & ptrIT):zeroAddr(0){
                         tmpName=getNewName();
 
                         //Function to add a new LiM Row inside the array: partial result row
-                        MemArray.addNewResultRow(tmpName, parallelism, effInForDestReg);
+                        ///////////MemArray.addNewResultRow(tmpName, parallelism, effInForDestReg);
                         FSMLim.addNewInstruction(instrListIT->allocTime, tmpName);
 
                         ////////////////DEBUG/////////////////////
@@ -343,7 +343,7 @@ LiMCompiler::LiMCompiler(InstructionTable & ptrIT):zeroAddr(0){
                         //sourceReg2 of the same type
 
                         //Add new input connection for sourceReg2
-                        MemArray.addNewInputConnection(src2, src1);
+                        /////////MemArray.addNewInputConnection(src2, src1);
 
                         //Update the effective in for the destination register:
                         effInForDestReg=src2;
@@ -353,7 +353,7 @@ LiMCompiler::LiMCompiler(InstructionTable & ptrIT):zeroAddr(0){
                         //sourceReg1 of the same type
 
                         //Add new input connection for sourceReg1
-                        MemArray.addNewInputConnection(src1, src2);
+                        ////////MemArray.addNewInputConnection(src1, src2);
 
                         //Update the effective in for the destination register:
                         effInForDestReg=src1;
@@ -365,7 +365,7 @@ LiMCompiler::LiMCompiler(InstructionTable & ptrIT):zeroAddr(0){
 
                         //Add new input connection for sourceReg1
                         errs() << "\tChange LiM row performed!\n";
-                        MemArray.addNewInputConnection(src2, src1);
+                        ////////MemArray.addNewInputConnection(src2, src1);
 
                         //Update the available source register with the corresponding LiM structure (LIFO approach)
                         effInForDestReg=src2;
@@ -373,7 +373,7 @@ LiMCompiler::LiMCompiler(InstructionTable & ptrIT):zeroAddr(0){
                     } else if(MemArray.changeLiMRowType(src1, instrListIT->operation, instrListIT->specifications)){
                         //Add new input connection for sourceReg1
                         errs() << "\tChange LiM row performed!\n";
-                        MemArray.addNewInputConnection(src1, src2);
+                        ////////////MemArray.addNewInputConnection(src1, src2);
 
                         //Update the available source register with the corresponding LiM structure (LIFO approach)
                         effInForDestReg=src1;
@@ -403,9 +403,11 @@ LiMCompiler::LiMCompiler(InstructionTable & ptrIT):zeroAddr(0){
                         //LiM array: the new row is associated to the same key of the "parent" one
                         //inside the map
 
+
+
                         //Function to add a new LiM Row inside the array: partial result row
-                        MemArray.addNewLiMRow(effAddrDestReg, instrListIT->operation, instrListIT->specifications,
-                                              parallelism, src2);
+                        /////////MemArray.addNewLiMRow(effAddrDestReg, instrListIT->operation, instrListIT->specifications,
+                                              ///parallelism, src2);
 
     //                  //Function to add a new LiM Row inside the array: partial result row
     //                  MemArray.addNewLiMRow(instrListIT->destinationReg, instrListIT->operation, instrListIT->specifications,
@@ -441,7 +443,7 @@ LiMCompiler::LiMCompiler(InstructionTable & ptrIT):zeroAddr(0){
 
                     //Function to add a new LiM Row inside the array: partial result row
                     effAddrDestReg=getNewName();
-                    MemArray.addNewResultRow(effAddrDestReg, parallelism, effInForDestReg);
+                    /////////MemArray.addNewResultRow(effAddrDestReg, parallelism, effInForDestReg);
                     FSMLim.addNewInstruction(instrListIT->allocTime, effAddrDestReg);
                     //Update the address
                     //effAddrDestReg=getNewName();

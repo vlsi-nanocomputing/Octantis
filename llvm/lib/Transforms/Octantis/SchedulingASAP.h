@@ -14,6 +14,7 @@
 
 #include "InstructionTable.h"
 #include "AdditionalLogicPorts.h"
+#include "CollectInfo.h"
 //#include "Allocator.h" //The allocator will introduce constraints considering the config. files
 
 #include <map>
@@ -46,6 +47,9 @@ public:
     ///Default constructor
     SchedulingASAP();
 
+    SchedulingASAP(CollectInfo *infoCollection)
+      : infoCollection(infoCollection){};
+
     ///Constructor useful to initialize the Instruction Table
     SchedulingASAP(Instruction &I);
 
@@ -72,6 +76,9 @@ public:
 
     ///Function to parse Loops information
     void parseLoopInfo(BasicBlock &BB);
+
+    ///Function to parse information contained in a Loop Latch
+    void parseLoopLatchInfo(BasicBlock &BB);
 
     ///Function to know if a basic block is the last one belonging to a loop
     bool isTheLastBBInLoop(BasicBlock &BB);
@@ -158,6 +165,16 @@ private:
     /// Iterator over the inputFunctParam list
     std::list<int *>::iterator inputFunctParamIT;
 
+    CollectInfo * infoCollection;
+
+    //Map containing all the LoopHeaders BasicBlock (first field) and the associated loop info (second field)
+    //std::map<BasicBlock const *, loopInfoStruct *> loopInfoMap;
+
+    /// Iterator over loopInfoMap
+    //std::map<BasicBlock const *, loopInfoStruct *>::iterator loopInfoMapIT;
+
+    
+
 public:
     /// Fuction useful to define if a basic block is valid (switch
     /// cases)
@@ -175,7 +192,10 @@ public:
 
     InstructionTable IT;
 
+    
+
 private:
+
 
     /// Variable useful to store the current execution time
     int Timer=0;
@@ -192,6 +212,12 @@ private:
 
     /// Iterator over the itVariablesMap
     std::map<int * const, int>::iterator itVariablesMapIT;
+
+    /// map used to store all the initial values (most importantly the iterators' ones) assigned by the store instructions
+    std::map<int * const, int> initValuesMap;
+
+    /// Iterator over the initValuesMap
+    std::map<int * const, int>::iterator initValuesMapIT;
 
     /// Map for storing the temporary index for accessing
     /// an array
