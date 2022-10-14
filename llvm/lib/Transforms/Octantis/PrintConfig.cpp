@@ -163,6 +163,15 @@ void PrintConfig::ParseConfigFile()
     }
 }
 
+///It parses the command line
+void PrintConfig::parseCommandLine(){
+
+    //cl::opt<bool> debugMode("debugMode", cl::desc("Specify debug mode"));
+    //errs() << debugMode << "\n\n";
+
+
+}
+
 list<string> PrintConfig::fieldListMaker(string fieldData)
 {
     list<string> tmpList;

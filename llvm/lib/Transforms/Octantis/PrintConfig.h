@@ -13,8 +13,10 @@
 #include<string>
 #include<map>
 #include<list>
+#include "llvm/Support/CommandLine.h"
 // LLVM include files:
 #include "llvm/Support/raw_ostream.h"
+
 
 using namespace std;
 using namespace llvm;
@@ -35,9 +37,11 @@ public:
     /// Function to parse the configuration file
     void ParseConfigFile();
 
+    ///It parses the command line
+    void parseCommandLine();
+
     /// function that returns the created data structure
     std::map<std::string, std::map<std::string, std::list<std::string>>> getParsedData();
-
     
     void printConfigParameters();
     

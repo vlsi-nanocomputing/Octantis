@@ -30,176 +30,141 @@ PointerInfoTable::PointerInfoTable()
 }
 
 ///It detects the array access pattern
-PointerInfoTable::arrayAccessPattern PointerInfoTable::detectPointerAccessPattern(AccessPattern pointerAccessPattern){
+/*std::pair<PointerInfoTable::arrayAccessPattern, std::vector<int>>  PointerInfoTable::detectPointerAccessPattern(AccessPattern ptrAP){
 
     PointerInfoTable::arrayAccessPattern tmpPattern = undefined;
 
-    int iInitPos, jInitPos;
-    bool firstEl = true;
-    std::vector<int> incrementVectorRowMaj, incrementVectorColMaj, incrementVectorRowDiag, incrementVectorColDiag;
+    //int iInitPos, jInitPos;
+    //bool firstEl = true;
+    //std::vector<int> incrementVectorRowMaj, incrementVectorColMaj, incrementVectorRowDiag, incrementVectorColDiag;
 
-    bool isRowMajor = true;
-    bool isColMajor = true;
-    bool isRowDiag = true;
-    bool isColDiag = true;
+    //bool isRowMajor = true;
+    //bool isColMajor = true;
+    //bool isRowDiag = true;
+    //bool isColDiag = true;
 
-    int patternRows = pointerAccessPattern.getRows();
-    int patternCols = pointerAccessPattern.getCols();
+    //Getting rows and columns of the AP
+    int patternRows = ptrAP.getRows();
+    int patternCols = ptrAP.getCols();
 
+    //Initial and final columns of zeros in the AP
+    int initZeros = 0;
+    int finalZeros = 0;
+
+    bool patternFound = false;
+
+    //If more than 1 patternRow, the AP refers to a matrix
     if(patternRows > 1){
-        for(int i = 0; i < patternRows; ++i){
-            for(int j = 0; j < patternCols; ++j){
 
-                if(pointerAccessPattern(i,j) != 0 && firstEl){
+        //Cycling over the AP
+        for(int i = 0; i < patternRows && !patternFound; ++i){
+            for(int j = 0; j < patternCols && !patternFound; ++j){
 
-                    iInitPos = i;
-                    jInitPos = j;
-                    firstEl = false;
+                //When an element equal to 1 is found, the position of the other not-null elements in the AP is checked
+                if(ptrAP(i,j) == 1){
 
-                }else if(pointerAccessPattern(i,j) != 0 && !firstEl){
+                    if(ptrAP(i+1,j-1) == 1 && ptrAP(i+1,j+1) == 1 && ptrAP(i,j+2) == 1){
 
-                    if(i - iInitPos > 0 && j - jInitPos > 0){
-                        incrementVectorRowMaj.push_back(pointerAccessPattern(i,j));
-                    }else{
-                        isRowMajor = false;
+                        //column major with 2-dim sets going as column major
+                        initZeros = i - 1;
+                        finalZeros = patternCols - i - 3;
+                        tmpPattern = colMajorSet2ColMajor;
+                        patternFound = true;
+
+                    }else if(ptrAP(i,j+2) == 1 && ptrAP(i+1,j+1) == 1 && ptrAP(i+1,j+3) == 1){
+
+                        //row major with 2-dim sets going as row major
+                        initZeros = i;
+                        finalZeros = patternCols - i - 4;
+                        tmpPattern = rowMajorSet2RowMajor;
+                        patternFound = true;
+
+                    }else if(ptrAP(i,j+1) == 1 && ptrAP(i+1,j-1) == 1 && ptrAP(i+1,j+2) == 1){
+
+                        //row major with 2-dim sets going as column major
+                        initZeros = i - 1;
+                        finalZeros = patternCols - i - 3;
+                        tmpPattern = rowMajorSet2ColMajor;
+                        patternFound = true;
+
+                    }else if(ptrAP(i,j+3) == 1 && ptrAP(i+1,j+1) == 1 && ptrAP(i+1,j+2) == 1){
+
+                        //column major with 2-dim sets going as row major
+                        initZeros = i;
+                        finalZeros = patternCols - i - 4;
+                        tmpPattern = colMajorSet2RowMajor;  
+                        patternFound = true;                      
+
+                    }else if(ptrAP(i,j+2) == 1 && ptrAP(i+1,j+1) == 1){
+
+                        //column major with 1-dim vector sets going as row major
+                        initZeros = i;
+                        finalZeros = patternCols - i - 3;
+                        tmpPattern = colMajorSet1RowMajor;
+                        patternFound = true;
+
+                    }else if(ptrAP(i+1,j-1) == 1 && ptrAP(i+1,j+1) == 1){
+
+                        //row major with 1-dim vector sets going as column major
+                        initZeros = i - 1;
+                        finalZeros = patternCols - i - 2;
+                        tmpPattern = rowMajorSet1ColMajor;
+                        patternFound = true;
+
+                    }else if(ptrAP(i+1,j+1) == 1){
+
+                        //simple row major
+                        initZeros = i;
+                        finalZeros = patternCols - i - 2;
+                        tmpPattern = rowMajorPosColPos;
+                        patternFound = true;
+
+                    }else if(ptrAP(i+1,j-1) == 1){
+
+                        //simple column major
+                        initZeros = i - 1;
+                        finalZeros = patternCols - i - 1;
+                        tmpPattern = colMajorPosRowPos;
+                        patternFound = true;
+
                     }
 
                 }
+
             }
         }
-
-        firstEl = true;
-
-        for(int i = 0; i < patternRows; ++i){
-            for(int j = 0; j < patternCols; ++j){
-
-                if(pointerAccessPattern(i,j) != 0 && firstEl){
-
-                    iInitPos = i;
-                    jInitPos = j;
-                    firstEl = false;
-
-                }else if(pointerAccessPattern(i,j) != 0 && !firstEl){
-
-                    if(i - iInitPos > 0 && j - jInitPos < 0){
-                        incrementVectorColMaj.push_back(pointerAccessPattern(i,j));
-                    }else{
-                        isColMajor = false;
-                    }
-
-                }
-            }
-        }
-
-        /*
-    firstEl = true;
-
-    while(isRowDiag){
-        for(int i = 0; i < pointerAccessPattern.getRows(); ++i){
-            for(int j = 0; j < pointerAccessPattern.getCols(); ++j){
-
-                if(pointerAccessPattern(i,j) != 0 && firstEl){
-
-                    iInitPos = i;
-                    jInitPos = j;
-                    firstEl = false;
-
-                }else if(pointerAccessPattern(i,j) != 0 && !firstEl){
-
-                    if(){
-                        incrementVectorColMaj.push_back(pointerAccessPattern(i,j));
-                    }else{
-                        isRowDiag = false;
-                    }
-
-                }
-            }
-        }
-    }
-
-    firstEl = true;
-
-    while(isColDiag){
-        for(int i = 0; i < pointerAccessPattern.getRows(); ++i){
-            for(int j = 0; j < pointerAccessPattern.getCols(); ++j){
-
-                if(pointerAccessPattern(i,j) != 0 && firstEl){
-
-                    iInitPos = i;
-                    jInitPos = j;
-                    firstEl = false;
-
-                }else if(pointerAccessPattern(i,j) != 0 && !firstEl){
-
-                    if(){
-                        incrementVectorColMaj.push_back(pointerAccessPattern(i,j));
-                    }else{
-                        isColDiag = false;
-                    }
-
-                }
-            }
-        }
-    }*/
-
     }else{
+        //If not more than 1 patternRow, the AP refers to a vector
 
-        for(int j = 0; j < patternCols; ++j){
+        for(int i = 0; i < patternCols && !patternFound; ++i){
 
-            if(pointerAccessPattern(0,j) != 0){
-
-                if(j % 2 == 0){
-                    if(pointerAccessPattern(0,j) > 0){
-                        return rowMajorPosColPos;
-                    }else{
-                        return rowMajorNegColPos;
-                    }
-                }else{
-                    if(pointerAccessPattern(0,j) > 0){
-                        return colMajorPosRowPos;
-                    }else{
-                        return colMajorNegRowPos;
-                    }
-                }
+            if(ptrAP(0,i) == 1){
+                
+                initZeros = i;
+                finalZeros = patternCols - i - 1;
+                tmpPattern = rowMajorPosColPos;
+                patternFound = true;
 
             }
 
         }
-
     }
+
+    //fill info about zeros
+    std::vector<int> zerosVect;
+    zerosVect.push_back(initZeros);
+    zerosVect.push_back(finalZeros);
+
+    //Building the return parameter
+    std::pair<PointerInfoTable::arrayAccessPattern, std::vector<int>> retPair;
+    retPair.first = tmpPattern;
+    retPair.second = zerosVect;
+
+    errs() << "Detected array access pattern: " << tmpPattern <<  " with zeros: " << zerosVect.at(0) << "   " << zerosVect.at(1) << "\n";
+    return retPair;
+
     
-    if(isRowMajor){
-        if(incrementVectorRowMaj.front() > 0 && incrementVectorRowMaj.back() > 0){
-            tmpPattern = rowMajorPosColPos;
-        }else if(incrementVectorRowMaj.front() > 0 && incrementVectorRowMaj.back() < 0){
-            tmpPattern = rowMajorPosColNeg;
-        }else if(incrementVectorRowMaj.front() < 0 && incrementVectorRowMaj.back() > 0){
-            tmpPattern = rowMajorNegColPos;
-        }else if(incrementVectorRowMaj.front() < 0 && incrementVectorRowMaj.back() < 0){
-            tmpPattern = rowMajorNegColNeg;
-        }
-
-    }else if(isColMajor){
-
-        if(incrementVectorColMaj.front() > 0 && incrementVectorColMaj.back() > 0){
-            tmpPattern = colMajorPosRowPos;
-        }else if(incrementVectorColMaj.front() > 0 && incrementVectorColMaj.back() < 0){
-            tmpPattern = colMajorPosRowNeg;
-        }else if(incrementVectorColMaj.front() < 0 && incrementVectorColMaj.back() > 0){
-            tmpPattern = colMajorNegRowPos;
-        }else if(incrementVectorColMaj.front() < 0 && incrementVectorColMaj.back() < 0){
-            tmpPattern = colMajorNegRowNeg;
-        }
-
-    }else if(isRowDiag){
-
-    }else if(isColDiag){
-
-    }
-
-    return tmpPattern;
-
-}
+}*/
 
 ///Function useful to return the infos about a specific pointer
 PointerInfoTable::pointerInfoStruct PointerInfoTable::getPointerInfo(int * pointer){
@@ -224,21 +189,32 @@ void PointerInfoTable::printPointerInfoTable(){
     errs()<< "Printing AIT\n";
 
     for(pointerInfoMapIT = pointerInfoMap.begin(); pointerInfoMapIT != pointerInfoMap.end(); ++pointerInfoMapIT){
-        errs()<< "\tpointer: " << pointerInfoMapIT->first
-                << "\tloopIterator: " << (pointerInfoMapIT->second).loopIterator 
-                << "\tnumber of sets: " << (pointerInfoMapIT->second).numberOfSets 
-                << "\tsetRows: " << (pointerInfoMapIT->second).setRows 
-                << "\tsetCols: " << (pointerInfoMapIT->second).setCols 
-                << "\trowFirst: " << (pointerInfoMapIT->second).rowFirst
-                << "\tcolFirst: " << (pointerInfoMapIT->second).colFirst 
-                << "\trowFirstSet: " << (pointerInfoMapIT->second).rowFirstSet 
-                << "\tcolFirstSet: " << (pointerInfoMapIT->second).colFirstSet 
-                << "\tfirstIdx: " << (((pointerInfoMapIT->second).firstIdxInfo).iterators).front()
-                << "\tsecondIdx: " << (((pointerInfoMapIT->second).secondIdxInfo).iterators).front() << "\n";
+        errs()<< "\tpointer: " << pointerInfoMapIT->first << "\n"
+                << "\t\tloopIterator: " << (pointerInfoMapIT->second).loopIterator << "\n"
+                << "\t\tarrayRows: " << (pointerInfoMapIT->second).arrayRows << "\n"
+                << "\t\tarrayCols: " << (pointerInfoMapIT->second).arrayCols << "\n" 
+                << "\t\tsetRows: " << (pointerInfoMapIT->second).setRows << "\n" 
+                << "\t\tsetCols: " << (pointerInfoMapIT->second).setCols << "\n"
+                << "\t\tspacingInSubsetX: " << (pointerInfoMapIT->second).spacingInSubsetX << "\n"
+                << "\t\tspacingInSubsetY: " << (pointerInfoMapIT->second).spacingInSubsetY << "\n"
+                << "\t\tspacingX: " << (pointerInfoMapIT->second).spacingX << "\n"
+                << "\t\tspacingY: " << (pointerInfoMapIT->second).spacingY << "\n"
+                << "\t\toffsetX: " << (pointerInfoMapIT->second).offsetX << "\n"
+                << "\t\toffsetY: " << (pointerInfoMapIT->second).offsetY << "\n"
+                << "\t\tstopX: " << (pointerInfoMapIT->second).stopX << "\n"
+                << "\t\tstopY: " << (pointerInfoMapIT->second).stopY << "\n"
+                << "\t\tnumberOfSubsets: " << (pointerInfoMapIT->second).numberOfSubsets << "\n"
+                << "\t\tnumberOfSubsetsElements: " << (pointerInfoMapIT->second).numberOfSubsetsElements << "\n"
 
-        errs() << "Array access pattern 1\n";
+                << "\t\tAPM: " << (pointerInfoMapIT->second).pointerAccessPattern.getApmType() << "\n"
+ 
+                << "\t\tfirstIdx: " << (((pointerInfoMapIT->second).firstIdxInfo).iterators).front() << "\n"
+                << "\t\tsecondIdx: " << (((pointerInfoMapIT->second).secondIdxInfo).iterators).front() << "\n";
+
+        errs() << "\t\tArray access pattern\n";
 
         for(int i = 0; i < ((pointerInfoMapIT->second).pointerAccessPattern).getRows(); ++i){
+            errs() << "\t\t\t";
             for(int j = 0; j < ((pointerInfoMapIT->second).pointerAccessPattern).getCols(); ++j){
                 errs() << (pointerInfoMapIT->second).pointerAccessPattern(i,j) << " ";
             }
@@ -246,9 +222,10 @@ void PointerInfoTable::printPointerInfoTable(){
         }
 
 
-        errs() << "Array access pattern constant 1\n";
+        errs() << "\t\tArray access pattern constant\n";
         
         for(int i = 0; i < ((pointerInfoMapIT->second).pointerAccessPatternConstant).getRows(); ++i){
+            errs() << "\t\t\t";
             for(int j = 0; j < ((pointerInfoMapIT->second).pointerAccessPatternConstant).getCols(); ++j){
                 errs() << (pointerInfoMapIT->second).pointerAccessPatternConstant(i,j) << " ";
             }

@@ -36,8 +36,8 @@ namespace octantis {
 /// Class useful for the generation of a VHDL description of the generated LiM structure.
 class PrintVhdlFile {
 public:
-  PrintVhdlFile(LiMArray *compArray, FiniteStateMachine *compFSM)
-      : compArray(compArray), compFSM(compFSM), entries(compArray->getDimensions()){};
+  PrintVhdlFile(LiMArray *compArray, FiniteStateMachine *compFSM, bool debugMode)
+      : compArray(compArray), compFSM(compFSM), entries(compArray->getDimensions()), debugMode(debugMode){};
 
   /// It prints the .vhd file for both the memory entity and its testbench
   void print();
@@ -151,6 +151,9 @@ private:
   int entries;
 
   std::list<int*> resultRowList;
+
+
+  bool debugMode;
 };
 
 } // namespace octantis

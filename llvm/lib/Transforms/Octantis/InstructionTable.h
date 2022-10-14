@@ -1,156 +1,143 @@
 /*-------------------------------------- The Octantis Project --------------------------------------*/
 //
-// Instruction Table Class: useful to store the instructions that will be scheduled on the LiM
-//                          architecture.
+// InstructionTable Class: It is useful to contain all scheduled instructions to be then mapped onto the LiM structure
 //
 /*-------------------------------------------- Licence ---------------------------------------------*/
 //
-// © Andrea Marchesin 2020 (andrea.marchesin@studenti.polito.it) for Politecnico di Torino
+// © Alessio Naclerio 2021 (alessio.naclerio@studenti.polito.it) for Politecnico di Torino
 //
 /*--------------------------------------------------------------------------------------------------*/
-#ifndef INSTRUCTIONTABLE_H
-#define INSTRUCTIONTABLE_H
+#ifndef INSTRUCTIONMAP_H
+#define INSTRUCTIONMAP_H
 
+#include <map>
+#include <iterator>
 #include <string>
 #include <list>
-#include <map>
-#include <vector>
-#include <cstdlib>
 
-#include "llvm/Support/raw_ostream.h"
+#include "llvm/IR/Function.h"
+#include "CollectInfo.h"
 
 using namespace llvm;
 
-namespace octantis{
+namespace octantis {
 
-///Class useful to store the instructions that will be scheduled on the LiM architecture.
+/// Class useful for the collection of information
 class InstructionTable
 {
-public:
-    //Initialization of the instructionList with a Operation
-    //InstructionTable(int * exeTime, int * compTime, std::string * op, int * destReg, int * src1Reg, int * src2Reg);
 
-    //Initialization of the instructionList with an Allocation
-    //InstructionTable(int * exeTime, std::string * op, int * destReg, int * src1Reg);
+public:
+
+    enum operandType{
+
+        singleVariable,
+        temporaryVariable,
+        array,
+        constant,
+        fakeArray,
+        undefined
+
+    };
+
+    ///Useful data for a scheduled instruction
+    struct instructionData{
+        int ti;
+        int di;
+
+        std::string operation;        
+        std::list<std::string> specifications;
+
+        int * destinationReg;
+        operandType destRegType;
+        int * destRegPrt;
+        int * sourceReg1;
+        operandType srcReg1Type;
+        int * srcReg1Ptr;
+        int * sourceReg2;
+        operandType srcReg2Type;
+        int * srcReg2Ptr;
+
+        bool isInLoopBody;
+    };
 
     ///Default constructor
     InstructionTable();
 
-    ///Function useful to set the iterator to the beginning of the list
-    void InitializeIterator();
-
-    ///Function useful to return the current value of the iterator
-    int GetIteratorValue();
-
-    ///Function useful to put a new operation instruction into the instructionList
-    void AddInstructionToList(int &allocTime, int &lastModifTime, std::string op, int* const destReg, int* const src1Reg,
-                              int * const src2Reg, int &arrayFactor);
-
-    ///Function useful to put a new operation instruction into the instructionList with specifications
-    /// (e.g. input/output line and switch statement)
-    void AddInstructionToListWithSpecs(int &allocTime, int &lastModifTime, std::string op, std::list<std::string> &switchList,
-                                       int * const destReg, int * const src1Reg, int * const src2Reg, int &arrayFactor);
-
-    ///Function useful to put a new operation instruction into the instructionList in a specific position (identified another location "refPos")
-    void AddInstructionToListAfterRefPos(int* const &refPos, int &allocTime, int &lastModifTime, std::string op, int* const destReg,
-                                         int* const src1Reg, int* const src2Reg, int &arrayFactor);
-
-    ///Function to add shift blocks inside an existing row
-    /// NOTEs: Warning, here we lose important timing information!
-    ///        Problem to solve in future updates!
-    void AddSpecToList(int * const &refPos, std::string op);
-
-    ///Function useful to put a new alloca instruction into the instructionList.
-    ///Here the src1Reg is the name of the Alias of the allocated data: the load
-    /// instruction is performed copying the allocated data into a new SSA register.
-    void AddAllocaInstructionToList(int &allocTime, int* const destReg, int &arrayDim);
-
-    ///Function to change the kind of operation of an instruction and
-    /// change the destination register of an operation
-    void ChangeOperatorAndDestReg(int * const srcLocation, std::string newOperator, int * const newSrcLocation);
-
-    ///Function useful to remove an element from the list
-    void RemoveInstructionFromList(int * const &rowName);
-
-    ///Funtion useful to add a new control signal to the list
-    void addControlSignal(int * &controlSig);
-
-    ///Funtion to get the parent of an operand: the location of the allocated
-    /// data on the stack.
-    bool isParentValid(int* const &srcReg, int &index);
-
-    ///Function to invalidate the information stored inside the parent location
-    void invalidateParent(int* const &parent, int &index);
-
-    ///Function to get the time in which the source information is available
-    int getAvailableTime(int* const &srcReg);
-
-    ///Function to get the first operand of an instruction
-    int * getFirstOperand(int * const &srcReg);
-
-    ///Function to get the type of an intruction
-    std::string getType(int * const &srcReg);
-
-/*-----------------------------DEBUG FUNCTIONS-------------------------------*/
-
-    void printIT();
-
-    void printAllocData();
 
 
-/*--------------------------END DEBUG FUNCTIONS------------------------------*/
+    ///It handles the insertion of load instructions
+    void insertLoadInstruction(int* destReg, operandType oT);
 
-//This has to be transformed into protected!
-public:
-    ///Structure useful to store the information related to each LLVM instruction
-    struct instructionData{
-        int allocTime;
-        int lastModifTime;
-        int lastReadTime;
-        std::string operation;
-        std::list<std::string> specifications; //Useful for switch and shift cases
-        int * destinationReg;
-        int * sourceReg1;
-        int * sourceReg2;
-        int arrayFactor; //Number of allocation per instruction
-    };
+    ///It handles the insertion of load instructions
+    void modifyLoadInstruction(int* destReg, int* newDestReg, int* newDestRegPtr);
 
-    ///Allocated data: they are typically inside the stack, so outside the memory.
-    ///The struct is useful to support the identification if one of these data has
-    /// been modified.
-    struct allocatedData{
-        int allocTime;
-        std::vector<bool> valid;
-        //bool valid;
-    };
 
+
+
+    ///It handles the insertion of new instructions that are not load
+    void insertInstruction(int ti, int di, std::string operation, int* destReg, operandType destRegType,
+                            int * destRegPrt, int* srcReg1, operandType srcReg1Type, int * srcReg1Ptr, int* srcReg2, operandType srcReg2Type,
+                            int * srcReg2Ptr, bool isInLoopBody);
+
+    ///It handles the insertion of new instructions that are not load with specs    
+    void insertInstructionWithSpecs(int ti, int di, std::string operation, std::list<std::string> specs, int* destReg, operandType destRegType,
+                                     int * destRegPrt, int* srcReg1, operandType srcReg1Type, int * srcReg1Ptr, int* srcReg2, operandType srcReg2Type,
+                                     int * srcReg2Ptr, bool isInLoopBody);
+
+    ///It adds specs to a specific instruction identified by destReg
+    void addSpecToInstruction(int* destReg, std::string spec);
+
+
+
+
+    ///It inserts info about dest reg related pointer in the related instruction designated by destReg parameter
+    void insertDestPtr(int* destReg, int* destRegPtr);
+
+    ///It handles the changing of the destReg of an instruction
+    int insertNewInstructionDestReg(std::string operation, int * newDestReg, int * oldDestReg);
+
+    ///It changes the operation of a given instruction
+    void changeOperationOfInstruction(int* destReg, std::string newOperation);
+
+    ///Swaps the operands of the instruction
+    void swapOperands(int* destReg);
+
+    ///Modify the given field of the instruction
+    void modifyGivenField(int* destReg, const std::string &field, int* newField, operandType oT);
+
+
+
+
+
+    ///It returns the available time of the instructionw whose destReg is srcReg
+    int getAvailableTime(int* srcReg);
+
+    ///It sets the init time and delay for the operation
+    void setInstructionTimeAndDelay(int * destReg, int time, int delay);
+
+    ///It returns the Instruction Map
+    std::map<int *, instructionData> getInstructionMap();
+
+    ///It reorders the vector containing all scheduled instructions
+    void reorderInstructionVector();
+
+    /*-----------------------------DEBUG FUNCTIONS-------------------------------*/
+
+    void printInstructionMap();
+
+    /*--------------------------END DEBUG FUNCTIONS------------------------------*/
 
 public:
-    ///Function to get the iterator of a specific entry of the Instruction Table
-    std::list<instructionData>::iterator getIteratorToElement(int* const &position);
 
-//This has to be transformed into protected!
-public:
-    ///List containing all the instructions that have to be scheduled
-    ///     (NOTE: the structure has to be updated into a MAP)
-    std::list<instructionData> instructionList;
+    ///Map containing all scheduled instructions
+    std::map<int*, instructionData> instructionMap;
+    std::map<int*, instructionData>::iterator instructionMapIT;
 
-    ///Map containing the info about the alloc data
-    std::map<int * const, allocatedData> allocMap;
-
-    ///List containing all the control signals
-    ///     (NOTE: they are stored but not implemented!)
-    std::list<int *> controlSignals;
-
-private:
-    ///Iterator to access the list
-    std::list<instructionData>::iterator IListIt;
-
-    ///Iterator to access the map
-    std::map<int * const, allocatedData>::iterator MapIt;
-
+    //Vector containing pairs of destReg(of scheduled instructions) - related operation
+    std::vector<std::pair<int*, std::string>> instructionOrderVector;
+    
 };
 
-} // End of Octantis namespace
+} //End of Octantis' namespace
 
-#endif // INSTRUCTIONTABLE_H
+#endif // INSTRUCTIONMAP_H

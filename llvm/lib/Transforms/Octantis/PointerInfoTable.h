@@ -33,7 +33,8 @@ public:
     PointerInfoTable();
 
     ///enum type for array access pattern
-    enum arrayAccessPattern{
+    /* 
+        enum arrayAccessPattern{
         rowMajorPosColPos,
         rowMajorNegColPos,
         rowMajorPosColNeg,
@@ -44,18 +45,16 @@ public:
         colMajorPosRowNeg,
         colMajorNegRowNeg,
 
-        rowMajorPosColPosDiag,
-        rowMajorNegColPosDiag,
-        rowMajorPosColNegDiag,
-        rowMajorNegColNegDiag,
+        colMajorSet1RowMajor,
+        rowMajorSet1ColMajor,
 
-        colMajorPosRowPosDiag,
-        colMajorNegRowPosDiag,
-        colMajorPosRowNegDiag,
-        colMajorNegRowNegDiag,
+        colMajorSet2RowMajor,
+        rowMajorSet2ColMajor,
+        colMajorSet2ColMajor,
+        rowMajorSet2RowMajor,
 
         undefined,
-    };
+    };*/
 
     ///Structure useful for storing info about how an array index is calculated
     struct indexInfoStruct{
@@ -70,14 +69,38 @@ public:
     struct pointerInfoStruct{
         int * loopIterator;
 
-        int numberOfSets;
+        //Number of rows of the pointer array
+        int arrayRows;
+        //Number of cols of the pointer array
+        int arrayCols;
+
+        //Number of rows of a subset
         int setRows;
+        //Number of rows of a subset
         int setCols;
 
-        bool rowFirst;
-        bool colFirst;
-        bool rowFirstSet;
-        bool colFirstSet;
+        //Horizontal spacing between two subset elements
+        int spacingInSubsetX;
+        //Vertical spacing between two subset elements
+        int spacingInSubsetY;
+        //Horizontal spacing between two subsets
+        int spacingX;
+        //Vertical spacing between two subsets
+        int spacingY;
+
+        //Horizontal offset
+        int offsetX;
+        //Vertical offset
+        int offsetY;
+        //Horizontal stop
+        int stopX;
+        //Vertical stop
+        int stopY;
+
+        //Number of subsets in the pointer array
+        int numberOfSubsets;
+        //Number of elements in a subset
+        int numberOfSubsetsElements;
 
         AccessPattern pointerAccessPattern;
         AccessPattern pointerAccessPatternConstant;
@@ -96,7 +119,7 @@ public:
     void modifyPointerInfo(int * pointer, pointerInfoStruct PointerInfo);
 
     ///It detects the array access pattern
-    arrayAccessPattern detectPointerAccessPattern(AccessPattern pointerAccessPattern);
+    //std::pair<arrayAccessPattern, std::vector<int>> detectPointerAccessPattern(AccessPattern ptrAP);
 
 
     /*-----------------------------DEBUG FUNCTIONS-------------------------------*/

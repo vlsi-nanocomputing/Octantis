@@ -1,413 +1,361 @@
 /*-------------------------------------- The Octantis Project --------------------------------------*/
 //
-// Instruction Table Class: useful to store the instructions that will be scheduled on the LiM
-//                          architecture.
+// InstructionTable Class: It is useful to contain all scheduled instructions to be then mapped onto the LiM structure
 //
 /*-------------------------------------------- Licence ---------------------------------------------*/
 //
-// © Andrea Marchesin 2020 (andrea.marchesin@studenti.polito.it) for Politecnico di Torino
+// © Alessio Naclerio 2021 (alessio.naclerio@studenti.polito.it) for Politecnico di Torino
 //
 /*--------------------------------------------------------------------------------------------------*/
 #include "InstructionTable.h"
 
-// Standard C++ Include Libraries
+//LLVM Include Files
+#include "llvm/IR/Function.h"
+
+#include "CollectInfo.h"
+
+//STD C++ Libraries
+#include <string>
 #include <algorithm>
+#include <sstream>
 
 using namespace llvm;
 using namespace octantis;
 
 ///Default constructor
-InstructionTable::InstructionTable()
-{
+InstructionTable::InstructionTable(){
+}
+
+///It changes the operation of a given instruction
+void InstructionTable::changeOperationOfInstruction(int* destReg, std::string newOperation){
+
+    //Find destReg
+    instructionMapIT = instructionMap.find(destReg);
+
+    //If found, change operation
+    if(instructionMapIT != instructionMap.end()){
+        (instructionMapIT->second).operation = newOperation;
+    } 
 
 }
 
-//Initialization of the instructionList with a Operation
-//InstructionTable::InstructionTable(int * exeTime, int * compTime, std::string * op, int * destReg, int * src1Reg, int * src2Reg)
-//{
-//        AddInstructionToList(exeTime, compTime, op, destReg, src1Reg, src2Reg);
+///It handles the insertion of new instructions that are not load
+void InstructionTable::insertInstruction(int ti, int di, std::string operation, int* destReg, operandType destRegType,
+                            int * destRegPrt, int* srcReg1, operandType srcReg1Type, int * srcReg1Ptr, int* srcReg2, operandType srcReg2Type,
+                            int * srcReg2Ptr, bool isInLoopBody){
+    //Temporary empty list
+    std::list<std::string> tmpEmptyList;
 
-//}
-
-//Initialization of the instructionList with an Allocation
-//InstructionTable::InstructionTable(int * exeTime, std::string * op, int * destReg, int * src1Reg)
-//{
-//        AddAllocaInstructionToList(exeTime, op, destReg, src1Reg);
-//}
-
-///Function useful to set the iterator to the beginning of the list
-void InstructionTable::InitializeIterator() {
-        IListIt = instructionList.begin();
-}
-
-///Function useful to return the current value of the iterator
-int InstructionTable::GetIteratorValue() {
-    //Test
-    return 0;
-}
-
-///Function useful to put a new operation instruction into the instructionList
-void InstructionTable::AddInstructionToList(int &allocTime, int &lastModifTime, std::string op, int * const destReg,
-                                            int * const src1Reg, int * const src2Reg, int &arrayFactor) {
-
-        //Temporary empty list
-        std::list<std::string> tmpEmptyList;
-        //Temporary structure to link inside the list
-        instructionData tmpStruct = {
-            allocTime, //allocTime
-            lastModifTime, //lastModifTime
-            lastModifTime, //lastReadTime
-            op, //operation
-            tmpEmptyList, //No switch operation
-            destReg, //destinationReg
-            src1Reg, //sourceReg1
-            src2Reg, //sourceReg2
-            arrayFactor //Number of loop iterations
-        };
-
-        //Push the new line inside the Instruction Table
-        instructionList.push_back(tmpStruct);
-}
-
-///Function useful to put a new operation instruction into the instructionList with specifications
-/// (e.g. input/output line and switch statement)
-void InstructionTable::AddInstructionToListWithSpecs(int &allocTime, int &lastModifTime, std::string op,
-                                                  std::list<std::string> &switchList, int* const destReg,
-                                                  int* const src1Reg, int * const src2Reg, int &arrayFactor){
-
-    //Temporary structure to link inside the list
-    instructionData tmpStruct = {
-        allocTime, //allocTime
-        lastModifTime, //lastModifTime
-        lastModifTime, //lastReadTime
-        op, //operation
-        switchList, //Switch operators
-        destReg, //destinationReg
-        src1Reg, //sourceReg1
-        src2Reg, //sourceReg2
-        arrayFactor //Number of loop iterations
+    //Temporary structure to insert in instructionMap
+    InstructionTable::instructionData tmpStruct = {
+        ti,
+        di,
+        operation,
+        tmpEmptyList,
+        destReg,
+        destRegType,
+        destRegPrt,
+        srcReg1,
+        srcReg1Type,
+        srcReg1Ptr,
+        srcReg2,
+        srcReg2Type,
+        srcReg2Ptr,
+        isInLoopBody,
     };
 
-    //Push the new line inside the Instruction Table
-    instructionList.push_back(tmpStruct);
+    //Push the new instruction in instructionMap
+    instructionMap.insert(std::pair<int*, InstructionTable::instructionData>(destReg, tmpStruct));
 
+    //Push also in instruction vector
+    std::pair<int*, std::string> tmpPair = {destReg, operation};
+    instructionOrderVector.push_back(tmpPair);
+}
 
+///It inserts info about dest reg related pointer in the related instruction designated by destReg parameter
+void InstructionTable::insertDestPtr(int* destReg, int* destRegPtr){
+
+    //Find destReg
+    instructionMapIT = instructionMap.find(destReg);
+
+    //If found, insert related pointer
+    if(instructionMapIT != instructionMap.end()){
+        (instructionMapIT->second).destRegPrt = destRegPtr;
+    } 
+}
+
+///It handles the insertion of new instructions that are not load with specs
+void InstructionTable::insertInstructionWithSpecs(int ti, int di, std::string operation, std::list<std::string> specs, int* destReg, operandType destRegType,
+                                     int * destRegPrt, int* srcReg1, operandType srcReg1Type, int * srcReg1Ptr, int* srcReg2, operandType srcReg2Type,
+                                     int * srcReg2Ptr, bool isInLoopBody){
+
+    //Temporary structure to insert in instructionMap
+    InstructionTable::instructionData tmpStruct = {
+        ti,
+        di,
+        operation,
+        specs,
+        destReg,
+        destRegType,
+        destRegPrt,
+        srcReg1,
+        srcReg1Type,
+        srcReg1Ptr,
+        srcReg2,
+        srcReg2Type,
+        srcReg2Ptr,
+        isInLoopBody,
+    };
+
+    //Push the new instruction in instructionMap
+    instructionMap.insert(std::pair<int*, InstructionTable::instructionData>(destReg, tmpStruct));
+}
+
+///It handles the insertion of load instructions
+void InstructionTable::insertLoadInstruction(int* destReg, operandType oT){
+    //Temporary empty list
+    std::list<std::string> tmpEmptyList;
+
+    //Temporary structure to insert in instructionMap
+    InstructionTable::instructionData tmpStruct = {
+        0,
+        0,
+        "load",
+        tmpEmptyList,
+        destReg,
+        oT,
+        nullptr,
+        nullptr,
+        undefined,
+        nullptr,
+        nullptr,
+        undefined,
+        nullptr,
+        false,
+    };
+
+    
+    instructionMapIT = instructionMap.find(destReg);
+    //If there is no load with the same operand, it can be scheduled
+    if(instructionMapIT == instructionMap.end() ){
+
+        //pushing into instruction map
+        instructionMap.insert(std::pair<int*, InstructionTable::instructionData>(destReg, tmpStruct)); 
+
+        //pushing into instruction vector
+        std::pair<int*, std::string> tmpPair = {destReg, "load"};
+        instructionOrderVector.push_back(tmpPair);
+
+    }
 
 }
 
-///Function useful to put a new operation instruction into the instructionList in a specific position (identified another location "refPos")
-void InstructionTable::AddInstructionToListAfterRefPos(int* const &refPos, int &allocTime, int &lastModifTime, std::string op,
-                                                       int * const destReg, int * const src1Reg, int * const src2Reg, int &arrayFactor){
 
-        //Temporary empty list
-        std::list<std::string> tmpEmptyList;
-        //Temporary structure to link inside the list
-        instructionData tmpStruct = {
-            allocTime, //allocTime
-            lastModifTime, //lastModifTime
-            lastModifTime, //lastReadTime
-            op, //operation
-            tmpEmptyList,
-            destReg, //destinationReg
-            src1Reg, //sourceReg1
-            src2Reg, //sourceReg2
-            arrayFactor //Number of loop iterations
-        };
+///It handles the insertion of load instructions
+void InstructionTable::modifyLoadInstruction(int* destReg, int* newDestReg, int* newDestRegPtr){
 
-        IListIt=getIteratorToElement(refPos);
+    instructionMapIT = instructionMap.find(destReg);
+    //If there is no load with the same operand, it can be scheduled
+    if(instructionMapIT == instructionMap.end() ){
 
-        //Select the subsequent position (after refPos)
-        std::advance(IListIt,1);
+        (instructionMapIT->second).destinationReg = newDestReg;
+        (instructionMapIT->second).destRegPrt = newDestRegPtr;
 
-        //Push the new line inside the Instruction Table
-        instructionList.insert(IListIt,tmpStruct);
+    }
+
 }
 
-///Function useful to put a new alloca instruction into the instructionList
-void InstructionTable::AddAllocaInstructionToList(int &allocTime, int* const destReg, int &arrayDim) {
+///It adds specs to a specific instruction identified by destReg
+void InstructionTable::addSpecToInstruction(int* destReg, std::string spec){
 
-        //Temporary vector to store the validity bit
-        std::vector<bool> tmpValidityVector;
+    //If destReg is found, push related specs
+    instructionMapIT = instructionMap.find(destReg);
 
-        for(int i=0; i<arrayDim;++i)
-            tmpValidityVector.push_back(true); //valid - Initialization Value
-
-
-        //Temporary structure to link inside the map.
-        //Validity bit initialized to 'true'
-        allocatedData tmpStruct = {
-            allocTime, //allocTime
-            tmpValidityVector
-        };
-
-       // errs() << "Data in the structure: " << tmpStruct.executionTime << " " << tmpStruct.operation << " " << tmpStruct.destinationReg << " " << tmpStruct.sourceReg1 << "\n";
-
-        //Push the new line inside the allocMap
-        allocMap.insert({destReg, tmpStruct});
+    if(instructionMapIT != instructionMap.end()){
+        ((instructionMapIT->second).specifications).push_back(spec);
+    }
 }
 
-///Function to add shift blocks inside an existing row
-/// NOTEs: Warning, here we lose important timing information!
-///        Problem to solve in future updates!
-void InstructionTable::AddSpecToList(int * const &refPos, std::string op){
+void InstructionTable::modifyGivenField(int* destReg, const std::string &field, int* newField, operandType oT){
 
-    //Check if the source row exists
-    std::list<instructionData>::iterator internalIT;
+    instructionMapIT = instructionMap.find(destReg);
 
-    internalIT=getIteratorToElement(refPos);
-
-    if(internalIT!=instructionList.end())
-    {
-        //Check if the shift operand is already present
-        std::list<std::string>::iterator specsIT=find((internalIT->specifications).begin(),
-                                                      (internalIT->specifications).end(),
-                                                      op);
-        if(specsIT==(internalIT->specifications).end())
-        {
-            (internalIT->specifications).push_back(op);
+    if(instructionMapIT != instructionMap.end()){
+        if(field == "srcReg1"){
+            (instructionMapIT->second).sourceReg1 = newField;
+        }else if (field == "srcReg1Ptr"){
+            (instructionMapIT->second).srcReg1Ptr = newField;
+        }else if(field == "srcReg2"){
+            (instructionMapIT->second).sourceReg2 = newField;
+        }else if(field == "srcReg2Ptr"){
+            (instructionMapIT->second).srcReg2Ptr = newField;
+        }else if(field == "destReg"){
+            (instructionMapIT->second).destinationReg = newField;
+        }else if(field == "destRegPtr"){
+            (instructionMapIT->second).destRegPrt = newField;
+        }else if(field == "destRegType"){
+            (instructionMapIT->second).destRegType = oT;
+        }else if(field == "srcReg1Type"){
+            (instructionMapIT->second).srcReg1Type = oT;
+        }else if(field == "srcReg2Type"){
+            (instructionMapIT->second).srcReg2Type = oT;
         }
-
-    } else {
-        //An error occurred
-        llvm_unreachable("Error in InstructionTable: the row that has to be modified does not exist!");
     }
+
+}
+
+void InstructionTable::swapOperands(int* destReg){
+
+    instructionMapIT = instructionMap.find(destReg);
+
+    int* tmp1 = ((instructionMapIT)->second).sourceReg1;
+    int* tmp2 = ((instructionMapIT)->second).srcReg1Ptr;
+    InstructionTable::operandType tmp3 = ((instructionMapIT)->second).srcReg1Type;
+    ((instructionMapIT)->second).sourceReg1 = ((instructionMapIT)->second).sourceReg2;
+    ((instructionMapIT)->second).srcReg1Ptr = ((instructionMapIT)->second).srcReg2Ptr;
+    ((instructionMapIT)->second).srcReg1Type = ((instructionMapIT)->second).srcReg2Type;
+    ((instructionMapIT)->second).sourceReg2 = tmp1;
+    ((instructionMapIT)->second).srcReg2Ptr = tmp2;
+    ((instructionMapIT)->second).srcReg2Type = tmp3;
+    ((instructionMapIT)->second).destRegPrt = ((instructionMapIT)->second).srcReg2Ptr;
+
 }
 
 
-///Function to change the kind of operation of an instruction and
-/// change the destination register of an operation
-void InstructionTable::ChangeOperatorAndDestReg(int * const srcLocation, std::string newOperator, int * const newSrcLocation){
+///It returns the Instruction Map
+std::map<int *, InstructionTable::instructionData> InstructionTable::getInstructionMap(){
+    return instructionMap;
+}
 
-    std::list<instructionData>::iterator internalIT;
+///It sets the init time and delay for the operation
+void InstructionTable::setInstructionTimeAndDelay(int * destReg, int time, int delay){
 
-    //Typically the instruction is modified immediately after its introduction
-    internalIT=instructionList.end();
-    --internalIT;
+    instructionMapIT = instructionMap.find(destReg);
 
-    if((internalIT->destinationReg)==srcLocation)
-    {
+    if(instructionMapIT != instructionMap.end()){
+        (instructionMapIT->second).ti = time;
+        (instructionMapIT->second).di = delay;
+    }
 
-        (internalIT->operation)=newOperator;
-        (internalIT->destinationReg)=newSrcLocation;
+}
 
-    } else {
-        //Advanced research of the corret location
-        for(internalIT=instructionList.begin();internalIT!=instructionList.end();++internalIT)
-        {
-            if((internalIT->destinationReg)==srcLocation)
-            {
-                (internalIT->operation)=newOperator;
-                (internalIT->destinationReg)=newSrcLocation;
-                break;
-            }
+///It returns the available time of the instructionw whose destReg is srcReg
+int InstructionTable::getAvailableTime(int* srcReg){
+
+    //If srcReg is found, return the sum of its ti and di
+    instructionMapIT = instructionMap.find(srcReg);
+
+    return (instructionMapIT->second).ti + (instructionMapIT->second).di;
+}
+
+///It handles the changing of the destReg of an instruction
+int InstructionTable::insertNewInstructionDestReg(std::string operation, int * newDestReg, int * oldDestReg){
+
+    instructionMapIT = instructionMap.find(oldDestReg);
+
+    int ti = (instructionMapIT->second).ti;
+
+    InstructionTable::instructionData dataStruct = instructionMapIT->second;
+    dataStruct.destinationReg = newDestReg;    
+    dataStruct.operation = operation;
+
+    instructionMap.insert(instructionMapIT, std::pair<int*, InstructionTable::instructionData>(newDestReg, dataStruct));
+
+    return ti;
+}
+
+///It reorders the vector containing all scheduled instructions
+void InstructionTable::reorderInstructionVector(){
+
+    std::vector<std::pair<int*, std::string>> orderedVector;
+    
+    //Reordering the instruction vector putting load instructions at the beginning and after all others
+
+    for(auto vectIT = instructionOrderVector.begin(); vectIT != instructionOrderVector.end(); ++vectIT){
+        if(vectIT->second == "load"){
+            orderedVector.push_back(*vectIT);
         }
-        if(internalIT==instructionList.end())
-        {
-            //An error occurred
-            llvm_unreachable("Error in finding an instruction inside the InstructionList.\n");
+    }
+
+    for(auto vectIT = instructionOrderVector.begin(); vectIT != instructionOrderVector.end(); ++vectIT){
+        if(vectIT->second != "load"){
+            orderedVector.push_back(*vectIT);
         }
-
-    }
-}
-
-
-///Function useful to remove an element from the list
-void InstructionTable::RemoveInstructionFromList(int * const &rowName) {
-
-    //Check if the source row exists
-    std::list<instructionData>::iterator internalIT;
-
-    internalIT=getIteratorToElement(rowName);
-
-    if(internalIT!=instructionList.end())
-    {
-        instructionList.erase(internalIT);
-
-    } else {
-        //An error occurred
-        llvm_unreachable("Error in InstructionTable: the row that has to be deleted does not exist!");
-    }
-}
-
-///Funtion useful to add a new control signal to the list
-void InstructionTable::addControlSignal(int* & controlSig){
-    controlSignals.push_back(controlSig);
-}
-
-///Funtion to get the parent of an operand: the location of the allocated
-///data on the stack. It returns a null pointer if the parent has not
-///been modified after the load instruction (RAW conflict).
-bool InstructionTable::isParentValid(int* const &srcReg, int &index){
-
-    MapIt=allocMap.find(srcReg);
-    if (MapIt != allocMap.end())
-    {
-        return ((allocMap[srcReg]).valid[index]) ? true : false;
-    } else {
-        //An error occurred: the parent register, the allocated one, is not present in IT
-        llvm_unreachable("InstructionTable error: current instruction refers to a source register not present"
-                         " inside the instruction table");
     }
 
-}
-
-
-///Function to invalidate the information stored inside the parent location
-void InstructionTable::invalidateParent(int* const &parent, int &index){
-
-    MapIt=allocMap.find(parent);
-    if (MapIt != allocMap.end())
-    {
-        allocMap[parent].valid[index]=false;
-    } else {
-        //An error occurred: the parent register, the allocated one, is not present in IT
-        llvm_unreachable("InstructionTable error: current instruction refers to a source register not present"
-                         " inside the instruction table");
-    }
+    instructionOrderVector.clear();
+    instructionOrderVector = orderedVector;
 
 }
-
-///Function to get the time in which the source information is available
-int InstructionTable::getAvailableTime(int* const &srcReg){
-
-    auto entryMatching = getIteratorToElement(srcReg);
-    return entryMatching->lastModifTime;
-
-
-
-//    auto entryMatching = std::find_if(instructionList.cbegin(), instructionList.cend(), [srcReg] (const instructionData& iD) {
-//      return iD.destinationReg == srcReg;
-//    });
-
-//    if (entryMatching != instructionList.cend()) {
-
-//        return entryMatching->lastModifTime;
-
-//    } else {
-//        //An error occurred: the parent register, the allocated one, is not present in IT
-//        llvm_unreachable("InstructionTable error: current instruction refers to a source register not present"
-//                         " inside the instruction table");
-//    }
-}
-
-///Function to get the iterator of a specific entry of the Instruction Table
-std::list<InstructionTable::instructionData>::iterator InstructionTable::getIteratorToElement(int* const &position){
-
-    std::list<InstructionTable::instructionData>::iterator entryMatchingPos;
-    entryMatchingPos=std::find_if(instructionList.begin(), instructionList.end(), [position] (const instructionData& iD) {
-      return iD.destinationReg == position;
-    });
-
-    if (entryMatchingPos != instructionList.cend()) {
-
-        return entryMatchingPos;
-
-    } else {
-        //An error occurred: the parent register, the allocated one, is not present in IT
-        llvm_unreachable("InstructionTable error: current instruction is not present"
-                         " inside the instruction table");
-    }
-
-}
-
-///Function to get the first operand of an instruction
-int * InstructionTable::getFirstOperand(int * const &srcReg){
-
-    //Check if the source row exists
-    std::list<instructionData>::iterator internalIT;
-
-    internalIT=getIteratorToElement(srcReg);
-
-    return(internalIT->sourceReg1);
-}
-
-///Function to get the type of an intruction
-std::string InstructionTable::getType(int * const &srcReg){
-
-    auto entryMatching = getIteratorToElement(srcReg);
-    return entryMatching->operation;
-
-}
-
 
 /*-----------------------------DEBUG FUNCTIONS-------------------------------*/
+void InstructionTable::printInstructionMap(){
+    errs() << "Printing scheduled instructions\n";
 
-void InstructionTable::printIT(){
+    int count = 0;
+    std::stringstream ssSrc1, ssSrc2, ssDest, ssSrc1Ptr, ssSrc2Ptr, ssDestPtr;
+    std::string src1T, src2T, destT;
 
-    int lineCount=0;
+    errs() << "|-------------------------------------------------------------------------------------------------------------------------------|\n";
+    errs() << "|OP             |Dest Reg       |Dest Reg T     |Src Reg 1      |Src Reg 1 T    |Src Reg 2      |Src Reg 2 T    |Others         |\n";
+    errs() << "|-------------------------------------------------------------------------------------------------------------------------------|\n";
 
-    errs()<< "-----------------------------DEBUG MODE-----------------------------\n";
+    for(instructionMapIT = instructionMap.begin(); instructionMapIT != instructionMap.end(); ++instructionMapIT){
 
-    for (IListIt = instructionList.begin(); IListIt != instructionList.end(); ++IListIt)
-    {
-        errs()<< "\t\t Line " << lineCount << ": ";
-        errs()<< IListIt->allocTime << " ";
-        errs()<< IListIt->lastModifTime << " ";
-        errs()<< IListIt->lastReadTime << " ";
-        errs()<< IListIt->operation;
-        errs()<< "; Associated operators: ";
-        if(!(IListIt->specifications).empty()){
-            errs() << "NOT EMPTY. ";
-        } else{
-            errs() << "EMPTY. ";
-        }
-        errs()<< IListIt->destinationReg << " ";
-        errs()<< IListIt->sourceReg1 << " ";
-        errs()<< IListIt->sourceReg2 << " ";
-        errs()<< IListIt->arrayFactor << "\n";
+        ssSrc1 << (instructionMapIT->second).sourceReg1;
+        ssSrc2 << (instructionMapIT->second).sourceReg2;
+        ssDest << (instructionMapIT->second).destinationReg;
+        ssSrc1Ptr << (instructionMapIT->second).srcReg1Ptr;
+        ssSrc2Ptr << (instructionMapIT->second).srcReg2Ptr;
+        ssDestPtr << (instructionMapIT->second).destRegPrt;
 
-        lineCount++;
-    }
-
-    errs()<< "\n\n";
-
-}
-
-void InstructionTable::printAllocData(){
-
-    int lineCount=0;
-    int validCount=0;
-
-    errs()<< "An error occurred, the state of the Allocated Data Map will be printed:\n\n";
-
-    for (MapIt = allocMap.begin(); MapIt != allocMap.end(); ++MapIt)
-    {
-        errs()<< "\t Line " << lineCount << ": ";
-        errs()<< "allocReg: " << MapIt->first << ", ";
-        errs()<< "allocTime: " << MapIt->second.allocTime << ". Validity:\n";
-        for (auto i = (MapIt->second.valid).begin(); i != (MapIt->second.valid).end(); ++i)
-        {
-            errs()<< "\t\tvalidityBit" << validCount << ": " << *i << "\n";
-            ++validCount;
+        if((instructionMapIT->second).srcReg1Type == InstructionTable::array){
+            src1T = "Array";
+        }else if ((instructionMapIT->second).srcReg1Type == InstructionTable::singleVariable){
+            src1T = "Single Var";
+        }else if ((instructionMapIT->second).srcReg1Type == InstructionTable::fakeArray){
+            src1T = "Temp Var";
+        }else if ((instructionMapIT->second).srcReg1Type == InstructionTable::constant){
+            src1T = "Constant";
         }
 
-        validCount=0;
-        lineCount++;
+        if((instructionMapIT->second).srcReg2Type == InstructionTable::array){
+            src2T = "Array";
+        }else if ((instructionMapIT->second).srcReg2Type == InstructionTable::singleVariable){
+            src2T = "Single Var";
+        }else if ((instructionMapIT->second).srcReg2Type == InstructionTable::fakeArray){
+            src2T = "Temp Var";
+        }else if ((instructionMapIT->second).srcReg2Type == InstructionTable::constant){
+            src2T = "Constant";
+        }
+
+        if((instructionMapIT->second).destRegType == InstructionTable::array){
+            destT = "Array";
+        }else if ((instructionMapIT->second).destRegType == InstructionTable::singleVariable){
+            destT = "Single Var";
+        }else if ((instructionMapIT->second).destRegType == InstructionTable::fakeArray){
+            destT = "Temp Var";
+        }else if ((instructionMapIT->second).destRegType == InstructionTable::constant){
+            destT = "Constant";
+        }
+
+        errs() << "|" << (instructionMapIT->second).operation; for(int i = (instructionMapIT->second).operation.length(); i < 15; ++i){errs() << " ";} errs() << "|";
+        errs() << ssDest.str(); for(int i = ssDest.str().length(); i < 15; ++i){errs() << " ";} errs() << "|";
+        errs() << destT; for(int i = destT.length(); i < 15; ++i){errs() << " ";} errs() << "|";
+        errs() << ssSrc1.str(); for(int i = ssSrc1.str().length(); i < 15; ++i){errs() << " ";} errs() << "|";
+        errs() << src1T; for(int i = src1T.length(); i < 15; ++i){errs() << " ";} errs() << "|";
+        errs() << ssSrc2.str(); for(int i = ssSrc2.str().length(); i < 15; ++i){errs() << " ";} errs() << "|";
+        errs() << src2T; for(int i = src2T.length(); i < 15; ++i){errs() << " ";} errs() << "|\n";  
+        errs() << (instructionMapIT->second).destRegPrt << " " << (instructionMapIT->second).srcReg1Ptr << " " << (instructionMapIT->second).srcReg2Ptr << "\n";
+        errs() << "|-------------------------------------------------------------------------------------------------------------------------------|\n";
+
+        ssSrc1.str("");
+        ssSrc2.str("");
+        ssDest.str("");
+        ssSrc1Ptr.str("");
+        ssSrc2Ptr.str("");
+        ssDestPtr.str("");
+
     }
-
-    errs()<< "\n\n";
-
 }
-/*--------------------------END DEBUG FUNCTIONS------------------------------*/
-
-
-//Interesting functions:
-
-//auto entryMatching = std::find_if(instructionList.cbegin(), instructionList.cend(), [srcReg] (const instructionData& iD) {
-//  return iD.destinationReg == srcReg;
-//});
-
-//if (entryMatching != instructionList.cend()) {
-//    if ((entryMatching->lastModifTime) <= *execTime)
-//    {
-//        //The relation is valid
-//        return (int *) entryMatching->destinationReg;
-//    } else {
-//        return nullptr;
-//    }
-
-//} else {
-//    //An error occurred: the parent register, the allocated one, is not present in IT
-//    llvm_unreachable("InstructionTable error: current instruction refers to a source register not present"
-//                     " inside the instruction table");
-//}
+//--------------------END DEGUB FUNCTION---------------------

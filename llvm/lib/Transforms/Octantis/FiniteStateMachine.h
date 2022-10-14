@@ -33,7 +33,7 @@ public:
     FiniteStateMachine();
 
     ///Function to allocate a new operand in a precise time in FSM2
-    void addNewInstruction(int &time, int* const& operand);
+    void addNewInstruction(int time, int* const& operand);
 
     ///Function returning the active time of an operand in FSM2
     int getTime(int* const& operand);
@@ -64,8 +64,11 @@ private:
 public:
 
     ///Two data structures for FSM are available
+
+    ///The key field refers to the time interval and the value field contains the list of instructions to be executed
     std::map<int, std::list<int *>> FSM;
 
+    ///The key field refers to an instruction and the value field contains the time in which it has to be executed
     std::map<int*, int> FSM2;
 
     ///list containing selection signals info

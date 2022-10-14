@@ -4,21 +4,21 @@ endif()
 
 add_llvm_library( LLVMOctantis MODULE BUILDTREE_ONLY
   PrintConfig.cpp
+  OperationsDelay.cpp
   InstructionTable.cpp
   AccessPattern.cpp
-  SchedulingASAP.cpp
+  DependencyDetector.cpp
+  ASAP.cpp
   LiMArray.cpp
   FiniteStateMachine.cpp
   AdditionalLogicPorts.cpp
-  LiMCompiler.cpp
+  AddressList.cpp
   PrintDexFile.cpp
   PrintCadFile.cpp
   PrintVhdlFile.cpp
   PointerInfoTable.cpp
   LoopInfoTable.cpp
-  InstructionMap.cpp
-  ASAP.cpp
-  LimCompilerNew.cpp
+  LiMBinder.cpp
   CollectInfo.cpp
   OctantisPass.cpp
 

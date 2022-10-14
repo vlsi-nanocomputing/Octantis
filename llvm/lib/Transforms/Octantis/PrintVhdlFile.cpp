@@ -1011,9 +1011,10 @@ void PrintVhdlFile::printTestbench(){
   std::string numInputs = getNumberInputs();
   std::string numOutputs = getNumberOutputs();
 
-  
+  if(debugMode){
   errs() << "NINP " << numInputs << "\n";
   errs() << "NOUTP " << numOutputs << "\n";
+  }
 
   // entity, component and test signals declaration
   std::string constInit = "library IEEE;\n"

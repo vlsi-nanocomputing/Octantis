@@ -12,13 +12,14 @@
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/FileSystem.h"
 
+#include <algorithm>
+
 using namespace octantis;
 using namespace llvm;
 
 void PrintCadFile::print(){
 
     printArray();
-
     printLimcadCsvFile();
     printIrlcadCsvFile();
 }
@@ -26,7 +27,7 @@ void PrintCadFile::print(){
 /// It prints the the first .limcad (describing cell architecture) file for a Lim Cell containing a logic operator
 void PrintCadFile::printBitwiseLimcad(std::string &logicOp){
     // .limcad file opening with error handling
-    std::string limcadCellName = "LIM_Bitwise_cell.limcad";
+    std::string limcadCellName = "LIM_" + logicOp + "_cell.limcad";
     std::error_code ErrorInfolimcad;
     limcadCellFile = new raw_fd_ostream(limcadCellName.c_str(), ErrorInfolimcad,
                                llvm::sys::fs::F_None);
@@ -79,7 +80,7 @@ void PrintCadFile::printBitwiseLimcad(std::string &logicOp){
 /// and an input 2-to-1 mux
 void PrintCadFile::printBitwiseMux2to1Limcad(std::string &logicOp){
     // .limcad file opening with error handling
-    std::string limcadCellName = "LIM_BitwiseMux2to1_cell.limcad";
+    std::string limcadCellName = "LIM_" + logicOp +"Mux2to1_cell.limcad";
     std::error_code ErrorInfolimcad;
     limcadCellFile = new raw_fd_ostream(limcadCellName.c_str(), ErrorInfolimcad,
                                llvm::sys::fs::F_None);
@@ -520,6 +521,10 @@ void PrintCadFile::printLimcadCsvFile(){
     // cycling over the LiM array
     for(limArrayIT = ((*compArray).limArray).begin(); limArrayIT != ((*compArray).limArray).end(); ++limArrayIT){
 
+        errs() << limArrayIT->first << "\n";
+
+        std::transform((limArrayIT->second).rowType.begin(), (limArrayIT->second).rowType.end(), (limArrayIT->second).rowType.begin(), ::tolower);
+
         // get the iterator pointing to the operation of the current row inside the LiMOperations map
         OpImplIT = LimOperations.find((limArrayIT->second).rowType);
 
@@ -544,11 +549,11 @@ void PrintCadFile::printLimcadCsvFile(){
 
                 if(isMux){                    
                     for(i = 0; i < par; ++i){
-                        *arrayCsvFile << "LIM_BitwiseMux2to1_cell, ";
+                        *arrayCsvFile << "LIM_" << OpImplIT->first << "Mux2to1_cell, ";
                     }
                 }else{
                     for(i = 0; i < par; ++i){
-                        *arrayCsvFile << "LIM_Bitwise_cell, ";
+                        *arrayCsvFile << "LIM_" << OpImplIT->first << "_cell, ";
                     }
                 }
                 *arrayCsvFile << "\n";

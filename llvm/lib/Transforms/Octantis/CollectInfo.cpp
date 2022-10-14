@@ -32,15 +32,120 @@
 using namespace llvm;
 using namespace octantis;
 
-///Default constructor
-CollectInfo::CollectInfo()
-{
 
+///Function that parse, collecting informations, the given Function in order to pass only the essential info to the scheduler
+void CollectInfo::parseFunction(Function &F, LoopInfo &LI){
+
+    bool isLoopHeader = false;
+    bool isLoopLatch = false;
+    bool isLoopBody = false;
+    bool isFirstBB = true;
+
+    //Cycling over BBs
+
+    errs() << "Starting the parsing of the function with InfoCollector Pass\n\n\n";
+    
+    for (BasicBlock &BB : F) {
+        if(debugMode){
+        errs() << "\tBasic Block: " << (int*)&BB << " successor " <<(int *)(BB.getSingleSuccessor()) << " size " << BB.size() << "\n\n";      
+        }
+        //The first BB must be parsed in order to collect info about alloca instructions
+        //Also, information about loops in the function are collect starting from here
+        if(isFirstBB){
+            if(debugMode){
+            errs() << "\tFirst BB\n\n";
+            }
+
+            isFirstBB = false;
+            parseAllocaInstructions(&BB);
+            validBBs.push_back(&BB);
+            collectLoopInfo(LI);
+
+            if(debugMode){
+            errs() << "\n\n\n\n\n\n\n";
+            }
+
+        }else{
+
+            //Check if the BB is part of a loop (Header, Latch or Body)
+            for(auto listIT = loopHeaderList.begin(); listIT != loopHeaderList.end(); ++listIT){
+                if(*listIT == (int*)(&BB)){
+                    //current BB is a loop header
+                    isLoopHeader = true;
+
+                    if(debugMode){
+                    errs() << "\tBB is a loop header\n\n";
+                    }
+                }
+            }
+
+            for(auto listIT = loopLatchList.begin(); listIT != loopLatchList.end(); ++listIT){
+                if(*listIT == (int*)(&BB)){
+                    //current BB is a loop latch
+                    isLoopLatch = true;
+
+                    if(debugMode){
+                    errs() << "\tBB is a loop latch\n\n";
+                    }
+                }
+            }
+
+            for(auto listIT = loopBodyList.begin(); listIT != loopBodyList.end(); ++listIT){
+                if(*listIT == (int*)(&BB)){
+                    //current BB is a loop body
+                    isLoopBody = true;
+
+                    if(debugMode){
+                    errs() << "\tBB is a loop body\n\n";
+                    }
+                }
+            }
+
+            if(isLoopBody){
+
+                //Parse loop body and put it in the list of valid BBs
+                parseLoopBody(BB);
+                validBBs.push_back(&BB);
+
+            }else if(!isLoopHeader && !isLoopLatch){
+
+                //If the BB is neither a loop header or a loop latch (and it is not a loop body),
+                //it means it refers to a valid block (for scheduling) outside of a loop
+
+                if(debugMode){
+                errs() << "\tBB is outside a loop\n\n";
+                }
+
+                //parseLoopBody can be issued to handle also non-body BB, but it should be changed to be more specific
+                parseLoopBody(BB);
+                validBBs.push_back(&BB);
+
+            }
+
+            isLoopHeader = false;
+            isLoopLatch = false;
+            isLoopBody = false;
+        }
+        
+    }
+
+    if(debugMode){
+    errs() << "\t\tvalid BBs are:\n\n";
+    for(auto it = validBBs.begin(); it != validBBs.end(); ++it){
+        errs() << "\t\t\tBasic Block: " << (int*)(*it) << " with size: " << (*it)->size() << "\n\n";
+    }
+
+    PIT.printPointerInfoTable();
+    errs() << "\n\n\n\n\n";
+    printCombinedIteratorsMap();
+    }
 }
 
 ///Function useful to parse alloca instructions
 void CollectInfo::parseAllocaInstructions(BasicBlock* BB){
-    errs() << "Begin parsing alloca Instructions\n";
+    if(debugMode){
+    errs() << "\t\tStarting to parse alloca Instructions\n\n";
+    }
 
     //Cycling over instructions in the BB
     for (Instruction &I : *BB) {
@@ -48,7 +153,9 @@ void CollectInfo::parseAllocaInstructions(BasicBlock* BB){
         //Checking if the instruction in an alloca
         if(AllocaInst* a = dyn_cast<AllocaInst>(&I)){
 
-            errs() << "Identified alloca instruction " << (int*)(&I) << "\n";
+            if(debugMode){
+            errs() << "\t\t\tIdentified alloca instruction " << (int*)(&I) << "\n\n";
+            }
 
             //variables for number of rows and columns of an eventual array
             int rows, cols;  
@@ -85,7 +192,10 @@ void CollectInfo::parseAllocaInstructions(BasicBlock* BB){
                 sizeList.push_back(rows);
                 sizeList.push_back(cols);
                 arraysInfoMap.insert(std::pair<int*, std::list<int>> ((int*)&I, sizeList));
-                errs() << "\tArray allocation identified with " << rows << " rows and " << cols << " columns\n";
+
+                if(debugMode){
+                errs() << "\t\t\tArray allocation identified with " << rows << " rows and " << cols << " columns\n\n";
+                }
 
             }
 
@@ -98,10 +208,17 @@ void CollectInfo::parseAllocaInstructions(BasicBlock* BB){
     }
 }
 
+
+
+
+//----------------------------FUNCTIONS FOR LOOP INFO EXTRACTION---------------------------
+
 ///Function useful to parse loop preheader in order to detect iterator initialization
 void CollectInfo::parseLoopPreheader(BasicBlock* &BB){
 
-    errs() << "Begin parsing Loop Preheader in search of initializations\n";
+    if(debugMode){
+    errs() << "\t\t\t\tStarting to parse loop preheader in search of initializations\n\n";
+    }
 
     //Cycling over BB instructions
     for (Instruction &I : *BB) {
@@ -113,7 +230,6 @@ void CollectInfo::parseLoopPreheader(BasicBlock* &BB){
             if(ConstantInt* CI = dyn_cast<ConstantInt>(I.getOperand(0))){
 
                 //If it is a constant, then it MAY represent the initial value of an iterator
-                //errs() << "\tIdentified initialization with store instruction,\n\t inserting in initValuesMap " << I.getOperand(1) << " with " << CI->getSExtValue() << "\n";
                 initValuesMap.insert(std::pair<int *, int>((int*)(I.getOperand(1)),CI->getSExtValue()));
 
             }else{
@@ -130,14 +246,14 @@ void CollectInfo::parseLoopPreheader(BasicBlock* &BB){
 
             }
 
-        //Check if instruction is a store
+        //Check if instruction is a load
         }else if(dyn_cast<LoadInst>(&I)){
             
             //Checking if the operand to be loaded is the allocated register of an iterator
             iteratorsAliasMapIT = iteratorsAliasMap.find((int*)I.getOperand(0));
 
             if(iteratorsAliasMapIT != iteratorsAliasMap.end()){
-                //If yes, the load destination is inserted as the operand to be loaded aliass
+                //If yes, the load destination is inserted as the operand to be loaded alias
                 iteratorsAliasMapIT->second = (int*)(&I);
             }
         }
@@ -147,6 +263,10 @@ void CollectInfo::parseLoopPreheader(BasicBlock* &BB){
 
 ///Function devoted to the collection of information regarding loops
 void CollectInfo::collectLoopInfo(LoopInfo &LI){
+
+    if(debugMode){
+    errs() << "\n\n\t\tStarting to collect informations regarding loops in the program\n\n";
+    }
 
     //Getting the loops
     SmallVector<Loop *, 4> lip = LI.getLoopsInPreorder();
@@ -175,8 +295,10 @@ void CollectInfo::collectLoopInfo(LoopInfo &LI){
         loopHeaderList.push_back((int*)(loopHeader));
         loopLatchList.push_back((int*)(loopLatch));
 
-        errs() << "Found loop " << (int*)(*lipIT) << " with Preheader: " << loopPreheader << 
-                " with Header: " << loopHeader << " and Latch: " << loopLatch << "\n";
+        if(debugMode){
+        errs() << "\t\t\tFound loop " << (int*)(*lipIT) << " with Preheader: " << loopPreheader << 
+                " with Header: " << loopHeader << " and Latch: " << loopLatch << "\n\n";
+        }
 
         //Parse loop preheader
         parseLoopPreheader(loopPreheader);
@@ -216,19 +338,68 @@ void CollectInfo::collectLoopInfo(LoopInfo &LI){
 ///Function to parse Loops information
 int* CollectInfo::parseLoopHeaderAndLatch(BasicBlock* &LH, BasicBlock* &LL){
 
-    errs() << "Begin parsing Loop Header info\n";
-
     LoopInfoTable::loopInfoStruct loopInfo;
     int* it;
     loopInfo.loopHeader = (int*) LH;
     loopInfo.loopLatch = (int*) LL;
+
+    if(debugMode){
+    errs() << "\t\t\t\tStarting to parse Loop Latch Info...\n";
+    }
+
+    // Parsing the internal instructions
+    for (Instruction &I : *LL) {
+
+        Instr i=identifyInstr(I);
+
+        if(debugMode){
+        errs()<<"\t\t\t\t\tFetched (inside Loop Latch): " << I << "; recognized: " << i << "\n\n";
+        }
+
+        switch(i)
+        {
+            case binary:
+            {
+
+                //ASSUMPTION: the increment is constant!!!
+
+                //If an addition is present, in order to know the itearator increment
+                //Check if also Sub is useful to be identified!
+                if(I.getOpcode() == Instruction::Add){
+                    //Increment constant extraction
+                    Value *iter = I.getOperand(1);
+                    ConstantInt* CI = dyn_cast<ConstantInt>(iter);                
+
+                    loopInfo.iteratorIncrement = CI->getSExtValue();
+
+                    if(debugMode){
+                    errs() << "\t\t\t\t\t\tIncrement of current loop is: " << CI->getSExtValue() << "\n";
+                    }
+                }         
+            }
+                break;
+
+            default:
+            {
+                break;
+            }
+
+        }
+    }
+
+    if(debugMode){
+    errs() << "\t\t\t\tStarting to parse loop header info\n\n";
+    }
 
     //Parsing the internal instructions
     for (Instruction &I : *LH) {
 
         Instr i = identifyInstr(I);
 
-        errs() << "\tFetched (inside Loop Header): " << I << "; recognized: " << i << "\n";
+        if(debugMode){
+        errs() << "\t\t\t\t\tFetched (inside Loop Header): " << I << "; recognized: " << i << "\n\n";
+        }
+
         switch(i)
         {
             case load:
@@ -236,22 +407,25 @@ int* CollectInfo::parseLoopHeaderAndLatch(BasicBlock* &LH, BasicBlock* &LL){
                 //Find the initial value of the operand to be loaded
                 initValuesMapIT = initValuesMap.find((int*)I.getOperand(0));
 
-                //errs() << "\tFinding in initValuesMap " << I.getOperand(0) << "\n";
                 if (initValuesMapIT != initValuesMap.end()){
 
-                    //If found, the operand is looked for into the iteratorsAliasMap
+                    //If the loaded operand was previously initialized, the operand is looked for into the iteratorsAliasMap
                     iteratorsAliasMapIT = iteratorsAliasMap.find((int*)I.getOperand(0));
 
                     if(iteratorsAliasMapIT == iteratorsAliasMap.end()){
 
                         //If it is not present, add it to iteratorAliasMap, removing it from aliasInfoMap
-                        //errs() << "inserting in iteratorsAliasMap " << initValuesMapIT->first << "\n";
                         iteratorsAliasMap.insert(std::pair<int*, int*> (initValuesMapIT->first, (int*)(&I)));
                         aliasInfoMapIT = aliasInfoMap.find((int*)(I.getOperand(0)));
                         aliasInfoMap.erase(aliasInfoMapIT);
 
                         //Setting the iterator initial value because now it is sure that the variable initialized was an iterator
                         loopInfo.iteratorInitValue = initValuesMapIT->second;
+
+                        if(debugMode){
+                        errs() << "\t\t\t\t\t\tInitial value of current loop = " << loopInfo.iteratorInitValue << "\n\n";
+                        }
+
                         loopInfo.isInitValueConstant = true;
 
                         //iterator of the current loop header to be inserted as first field of loopInfoMap
@@ -273,13 +447,17 @@ int* CollectInfo::parseLoopHeaderAndLatch(BasicBlock* &LH, BasicBlock* &LL){
                     if(iteratorsAliasMapIT == iteratorsAliasMap.end()){
 
                         //Add iterator to iteratorAliasMap, removing it from aliasInfoMap
-                        //errs() << "inserting in iteratorsAliasMap " << initValuesMapIT->first << "\n";
                         iteratorsAliasMap.insert(std::pair<int*, int*> (initValuesMapIT->first, (int*)(&I)));
                         aliasInfoMapIT = aliasInfoMap.find((int*)(I.getOperand(0)));
                         aliasInfoMap.erase(aliasInfoMapIT);
 
                         //Setting the iterator initial value because now it is sure that the variable initialized was an iterator
                         loopInfo.variableInitValue = tmpVariableInitIterator;
+
+                        if(debugMode){
+                        errs() << "\t\t\t\t\t\tInitial value of current loop refers to iterator " << tmpVariableInitIterator << "\n\n";
+                        }
+
                         loopInfo.isInitValueConstant = false;
 
                         //iterator of the current loop header to be inserted as first field of loopInfoMap
@@ -311,17 +489,31 @@ int* CollectInfo::parseLoopHeaderAndLatch(BasicBlock* &LH, BasicBlock* &LL){
                     StringRef icmpPredicate = cmpInstr->getPredicateName(cmpInstr->getPredicate());
 
                     loopInfo.iteratorFinalValue = CI->getSExtValue();
+                    
+                    if(debugMode){
+                    errs() << "\t\t\t\t\t\tFinal value of current loop = " << loopInfo.iteratorFinalValue << "\n\n";
+                    }
 
                     //Calculating the loop iterations
-                    if(icmpPredicate == "sge" || icmpPredicate == "sle"){
-                        loopInfo.iterations = loopInfo.iteratorFinalValue - loopInfo.iteratorInitValue + 1;
-                    }else if(icmpPredicate == "sgt" || icmpPredicate == "slt"){
-                        loopInfo.iterations = loopInfo.iteratorFinalValue - loopInfo.iteratorInitValue;
+                    if((loopInfo.iteratorFinalValue - loopInfo.iteratorInitValue) % loopInfo.iteratorIncrement == 0){
+
+                        if(icmpPredicate == "sge" || icmpPredicate == "sle"){
+                            loopInfo.iterations = floor(( (float)(loopInfo.iteratorFinalValue - loopInfo.iteratorInitValue) / loopInfo.iteratorIncrement)) + 1;
+                        }else if(icmpPredicate == "sgt" || icmpPredicate == "slt"){
+                            loopInfo.iterations = floor(( (float)(loopInfo.iteratorFinalValue - loopInfo.iteratorInitValue) / loopInfo.iteratorIncrement));
+                        }
+
+                    }else{
+
+                        loopInfo.iterations = ((loopInfo.iteratorFinalValue - loopInfo.iteratorInitValue) / loopInfo.iteratorIncrement) + 1;
+
                     }
 
                     loopInfo.isFinalValueConstant = true;
 
-                    //errs() << "\tThe loop iterator final value is " << loopInfo.iteratorFinalValue << "\n";
+                    if(debugMode){
+                    errs() << "\t\t\t\t\t\tIterations of current loop = " << loopInfo.iterations << "\n\n";
+                    }
 
                 }else{
                     //If it is not constant, the final value is look for into the iteratorsAliasMap in order to check
@@ -336,9 +528,11 @@ int* CollectInfo::parseLoopHeaderAndLatch(BasicBlock* &LH, BasicBlock* &LL){
 
                         }
                     }
-                }                
 
-                //errs() << "The iterations of the loop statement are: " << loopInfo.iterations << "\n";
+                    if(debugMode){
+                    errs() << "\t\t\t\t\t\tFinal value of current loop refers to iterator " << loopInfo.variableFinalValue << "\n\n";
+                    }
+                }                
             }
                 break;
 
@@ -356,8 +550,6 @@ int* CollectInfo::parseLoopHeaderAndLatch(BasicBlock* &LH, BasicBlock* &LL){
                 loopBodyList.push_back(LB1);
                 loopBodyList.push_back(LB2);
 
-                //errs() << "\tLoop bodies of the loop are: " << LB1 << " and " << LB2 << "\n";
-
             }
                 break;
 
@@ -369,46 +561,7 @@ int* CollectInfo::parseLoopHeaderAndLatch(BasicBlock* &LH, BasicBlock* &LL){
         }
 
     }
-
     
-    errs() << "Starting to parse Loop Latch Info...\n";
-
-    // Parsing the internal instructions
-    for (Instruction &I : *LL) {
-
-        Instr i=identifyInstr(I);
-        errs()<<"Fetched (inside Loop Latch): " << I << "; recognized: " << i << "\n";
-        switch(i)
-        {
-            case binary:
-            {
-
-                //ASSUMPTION: the increment is constant!!!
-
-                //If an addition is present, in order to know the itearator increment
-                //Check if also Sub is useful to be identified!
-                if(I.getOpcode() == Instruction::Add){
-                    //Increment constant extraction
-                    Value *iter = I.getOperand(1);
-                    ConstantInt* CI = dyn_cast<ConstantInt>(iter);                
-
-                    loopInfo.iteratorIncrement = CI->getSExtValue();
-
-                    //errs() << "\tThe iterator increment is: " << CI->getSExtValue() << "\n";
-                }         
-            }
-                break;
-
-            default:
-            {
-                break;
-            }
-
-        }
-    }
-    
-    
-    //errs() << "Inserting new loop and its iterator in loopInfoMap: iterator " << it << "\n";
 
     //Insert the retrieved info inside LoopInfoTable
     LIT.insertLoopInfo(it, loopInfo);
@@ -424,13 +577,20 @@ int* CollectInfo::parseLoopHeaderAndLatch(BasicBlock* &LH, BasicBlock* &LL){
 ///Function to parse useful information inside a loop's body
 void CollectInfo::parseLoopBody(BasicBlock &BB){
 
-    errs() << "Begin parsing Loop Body info\n";
+    if(debugMode){
+    errs() << "\t\tStarting to parse loop body info\n\n";
+    }
 
     // Parsing the internal instructions
     for (Instruction &I : BB) {
 
         Instr i=identifyInstr(I);
-        errs()<<"Fetched (inside Loop Body): " << I << "; recognized: " << i << "\n";
+
+        if(debugMode){
+        errs()<<"\t\t\tFetched (inside Loop Body): " << I << "; recognized: " << i << "\n\n";
+        }
+
+
         switch(i)
         {
             case store:
@@ -454,7 +614,6 @@ void CollectInfo::parseLoopBody(BasicBlock &BB){
 
                 if (iteratorsAliasMapIT != iteratorsAliasMap.end()){
                     //substituting old alias with new one
-                    //errs() << "adding iterator " << (int*)(&I) << " as alias of " << iteratorsAliasMapIT->first << "\n";
                     iteratorsAliasMapIT->second = (int*)(&I);
 
                 }else{
@@ -474,7 +633,8 @@ void CollectInfo::parseLoopBody(BasicBlock &BB){
             {
                 //If an addition is present, it may be between 2 iterators
                 //Check if also Sub is useful to be identified!
-                if(I.getOpcode() == Instruction::Add || I.getOpcode() == Instruction::Sub){
+                if(I.getOpcode() == Instruction::Add){
+
                     Value* op1 = I.getOperand(0);
                     Value* op2 = I.getOperand(1);
 
@@ -486,6 +646,7 @@ void CollectInfo::parseLoopBody(BasicBlock &BB){
 
                     //Checking whether the operands are related to iterators
                     for(iteratorsAliasMapIT = iteratorsAliasMap.begin(); iteratorsAliasMapIT != iteratorsAliasMap.end(); ++iteratorsAliasMapIT){
+
                         if(iteratorsAliasMapIT->second == (int*) op1){
 
                             //The first operand is an iterator
@@ -503,6 +664,7 @@ void CollectInfo::parseLoopBody(BasicBlock &BB){
                         }
                     }
 
+                    
                     //If an addition operation between 2 iterators is identified
                     if(firstOpFound && secondOpFound){
                         
@@ -549,32 +711,57 @@ void CollectInfo::parseLoopBody(BasicBlock &BB){
                 arraysInfoMapIT = arraysInfoMap.find((int*)(GEP->getPointerOperand()));
 
                 if(arraysInfoMapIT != arraysInfoMap.end()){
+
                     //The pointer refers to a previously detected array
-                    //errs() << "Array found!\n";
+
+                    /*
+                        Cases are:
+
+                            1-dim array with one index
+                                index is composed of one iterator
+                                index is composed of iterator plus constant
+                                index in composed of two iterators
+                                index in composed of two iterators plus constant (TO BE IMPLEMENTED)
+
+                            2-dim array with 2 indexes
+                                index i with i = 1,2 is composed of one iterator
+                                index i with i = 1,2 is composed of iterator plus constant
+                                index i with i = 1,2 in composed of two iterators
+                                index i with i = 1,2 in composed of two iterators plus constant (TO BE IMPLEMENTED)
+
+                    */
+
                     //Check if the index is a combination of multiple loop iterators
                     combinedIteratorsMapIT = combinedIteratorsMap.find((int*)(GEP->getOperand(2)));
 
                     if(combinedIteratorsMapIT != combinedIteratorsMap.end()){
-                        //errs() << "\t\tCombined iterator found\n";
                         //Index is a combination of iterators
 
                         //If the information about the size is empty, it means that the second index will be considered
                         if((arraysInfoMapIT->second).empty()){
+
                             //second index
-                            //errs() << "Considering second idx\n";
                             tmpPointerStruct.secondIdxInfo = combinedIteratorsMapIT->second;
                             ptrValid = true;
+
                         }else{
+
                             //first index
                             tmpPointerStruct.firstIdxInfo = combinedIteratorsMapIT->second;
 
                         }
+
                     }else if (!(dyn_cast<ConstantInt>(GEP->getOperand(2)))){
+
                         //index is not a combination of iterators, not a constant, check if it is made up of a single iterator
+
                         for(iteratorsAliasMapIT = iteratorsAliasMap.begin(); iteratorsAliasMapIT != iteratorsAliasMap.end(); ++iteratorsAliasMapIT){
+
                             if(iteratorsAliasMapIT->second == (int*)(GEP->getOperand(2))){
+
                                 //If the information about the size is empty, it means that the second index will be considered
                                 if((arraysInfoMapIT->second).empty()){
+
                                     //second index
                                     PointerInfoTable::indexInfoStruct idxInfo;
                                     std::list<int*> itList;
@@ -589,7 +776,9 @@ void CollectInfo::parseLoopBody(BasicBlock &BB){
                                     tmpPointerStruct.secondIdxInfo = idxInfo;
 
                                     ptrValid = true;
+
                                 }else{
+
                                     //first index
                                     PointerInfoTable::indexInfoStruct idxInfo;
                                     std::list<int*> itList;
@@ -606,7 +795,11 @@ void CollectInfo::parseLoopBody(BasicBlock &BB){
                                 }
                             }
                         }
+
                     }else if(ConstantInt* CI = dyn_cast<ConstantInt>(GEP->getOperand(2))){
+
+                        //index is a constant
+                        
                         //If the information about the size is empty, it means that the second index will be considered
                         if((arraysInfoMapIT->second).empty()){
                             //second index
@@ -619,6 +812,7 @@ void CollectInfo::parseLoopBody(BasicBlock &BB){
                             tmpPointerStruct.secondIdxInfo = idxInfo;
 
                             ptrValid = true;
+
                         }else{
                             //first index
                             PointerInfoTable::indexInfoStruct idxInfo;
@@ -634,53 +828,118 @@ void CollectInfo::parseLoopBody(BasicBlock &BB){
 
                     //If the array is 1-dim array, all infos are already available
                     if((arraysInfoMapIT->second).front() == 1){
+
+                        //Second index is empty
                         PointerInfoTable::indexInfoStruct emptyIdxInfo;
                         tmpPointerStruct.secondIdxInfo = emptyIdxInfo;
 
-                        //errs() << "Inserting " << (int*)(&I) << " in PIT with first index " << ((tmpPointerStruct.firstIdxInfo).iterators).front() << "\n";
+                        //Inserting pointer into PIT
                         PIT.insertPointerInfo((int*)(&I), tmpPointerStruct);
 
-                        //update aliasInfoMap
+                        //pUdate aliasInfoMap
                         aliasInfoMapIT = aliasInfoMap.find((int*)(GEP->getPointerOperand()));
                         if(aliasInfoMapIT != aliasInfoMap.end()){
                             (aliasInfoMapIT->second).push_back((int*)(&I));
                         }
                         
+                        //Set all infos about the pointer
                         setPointerInfo((int*)(&I), &I);
+
+                        if(debugMode){
+                        if(combinedIteratorsMapIT != combinedIteratorsMap.end()){
+                            if(tmpPointerStruct.firstIdxInfo.constant != 0){
+                                errs() <<"\t\t\t\tPointer " << (int*)(&I) << " used to access the 1-dimensional array " 
+                                    << arraysInfoMapIT->first << " detected: index is made up of iterator: " << 
+                                    tmpPointerStruct.firstIdxInfo.iterators.front() << " and constant: " <<  tmpPointerStruct.firstIdxInfo.constant << "\n\n";
+                            }else{
+                                errs() <<"\t\t\t\tPointer " << (int*)(&I) << " used to access the 1-dimensional array " 
+                                    << arraysInfoMapIT->first << " detected: index is made up of iterators: " << 
+                                    tmpPointerStruct.firstIdxInfo.iterators.front() << " and " <<  tmpPointerStruct.firstIdxInfo.iterators.back() << "\n\n";
+                            }
+                        }else if(!(dyn_cast<ConstantInt>(GEP->getOperand(2)))){
+                            errs() <<"\t\t\t\tPointer " << (int*)(&I) << " used to access the 1-dimensional array " 
+                                    << arraysInfoMapIT->first << " detected: index is made up of iterator: " << 
+                                    tmpPointerStruct.firstIdxInfo.iterators.front() << "\n\n";
+                        }else if(dyn_cast<ConstantInt>(GEP->getOperand(2))){
+                            errs() <<"\t\t\t\tPointer " << (int*)(&I) << " used to access the 1-dimensional array " 
+                                    << arraysInfoMapIT->first << " detected: index is made up of constant: " << 
+                                    tmpPointerStruct.firstIdxInfo.constant << "\n\n";
+                        }
+                        }
 
                     }else{
                         if(ptrValid){
 
-                            //errs() << "update" << getAllocatedReg((int*)(GEP->getPointerOperand())) << " GEP " << (int*)(GEP->getPointerOperand()) << "\n";
-
                             ptrValid = false;
+
+                            //Inserting pointer into PIT
                             PIT.insertPointerInfo((int*)(&I), tmpPointerStruct);
 
-                            //update aliasInfoMap
+                            //Update aliasInfoMap
                             aliasInfoMapIT = aliasInfoMap.find(getAllocatedReg((int*)(GEP->getPointerOperand())));
                             if(aliasInfoMapIT != aliasInfoMap.end()){
                                 (aliasInfoMapIT->second).push_back((int*)(&I));
                             }
 
+                            //Set all infos about the pointer
                             setPointerInfo((int*)(&I), &I);
 
-                            //Erasing previous pointer which is useless
-                            /*for(auto listIT = (aliasInfoMapIT->second).begin(); listIT != (aliasInfoMapIT->second).end(); ++listIT){
-                                if(*listIT == (int*)(GEP->getPointerOperand())){
-                                    (aliasInfoMapIT->second).erase(listIT);
+                            if(debugMode){
+                            if(combinedIteratorsMapIT != combinedIteratorsMap.end()){
+                                if(tmpPointerStruct.secondIdxInfo.constant != 0){
+                                    errs() <<"\t\t\t\tIndex 2 of the previously detencte 2-dimensional array is made up of iterator: " << 
+                                        tmpPointerStruct.secondIdxInfo.iterators.front() << " and constant" <<  tmpPointerStruct.secondIdxInfo.constant << "\n\n";
+                                }else{
+                                    errs() <<"\t\t\t\tIndex 2 of the previously detencte 2-dimensional array is made up of iterators: " << 
+                                        tmpPointerStruct.secondIdxInfo.iterators.front() << " and " <<  tmpPointerStruct.secondIdxInfo.iterators.back() << "\n\n";
                                 }
-                            }*/
+                            }else if(!(dyn_cast<ConstantInt>(GEP->getOperand(2)))){
+                                errs() <<"\t\t\t\tIndex 2 of the previously detencte 2-dimensional array is made up of iterator: " << 
+                                        tmpPointerStruct.secondIdxInfo.iterators.front() << "\n\n";
+                            }else if(dyn_cast<ConstantInt>(GEP->getOperand(2))){
+                                errs() <<"\t\t\t\tIndex 2 of the previously detencte 2-dimensional array is made up of constant: " << 
+                                        tmpPointerStruct.secondIdxInfo.constant << "\n\n";
+                            }
+                            }
 
                         }else{
+
+                            //Pointer is not ready yet, info about the second index has to be fetched in the next GEP instruction
+
+                            //Inserting a temporary "array" in arrayInfoMap to let the next detection of a GEP instruction know
+                            //that the info about the second index has to be fetched
                             std::list<int> emptyList;
                             arraysInfoMap.insert(std::pair<int*, std::list<int>> ((int*)(&I), emptyList));
 
                             //update aliasInfoMap
                             aliasInfoMapIT = aliasInfoMap.find((int*)(GEP->getPointerOperand()));
                             if(aliasInfoMapIT != aliasInfoMap.end()){
-                                //errs() << "Inserting in aliasInfo map " << aliasInfoMapIT->first << " " << (int*)(&I);
+
                                 (aliasInfoMapIT->second).push_back((int*)(&I));
                             }
+
+                            if(debugMode){
+                            if(combinedIteratorsMapIT != combinedIteratorsMap.end()){
+                                if(tmpPointerStruct.firstIdxInfo.constant != 0){
+                                    errs() <<"\t\t\t\tPointer " << (int*)(&I) << " used to access the 2-dimensional array " 
+                                        << arraysInfoMapIT->first << " detected: index 1 is made up of iterator: " << 
+                                        tmpPointerStruct.firstIdxInfo.iterators.front() << " and constant" <<  tmpPointerStruct.firstIdxInfo.constant << "\n\n";
+                                }else{
+                                    errs() <<"\t\t\t\tPointer " << (int*)(&I) << " used to access the 2-dimensional array " 
+                                        << arraysInfoMapIT->first << " detected: index 1 is made up of iterators: " << 
+                                        tmpPointerStruct.firstIdxInfo.iterators.front() << " and " <<  tmpPointerStruct.firstIdxInfo.iterators.back() << "\n\n";
+                                }
+                            }else if(!(dyn_cast<ConstantInt>(GEP->getOperand(2)))){
+                                errs() <<"\t\t\t\tPointer " << (int*)(&I) << " used to access the 2-dimensional array " 
+                                        << arraysInfoMapIT->first << " detected: index 1 is made up of iterator: " << 
+                                        tmpPointerStruct.firstIdxInfo.iterators.front() << "\n\n";
+                            }else if(dyn_cast<ConstantInt>(GEP->getOperand(2))){
+                                errs() <<"\t\t\t\tPointer " << (int*)(&I) << " used to access the 2-dimensional array " 
+                                        << arraysInfoMapIT->first << " detected: index 1 is made up of constant: " << 
+                                        tmpPointerStruct.firstIdxInfo.constant << "\n\n";
+                            }
+                            }
+
                         }
                     }
 
@@ -729,153 +988,6 @@ void CollectInfo::parseLoopBody(BasicBlock &BB){
     }
 }
 
-///Function that parse, collecting informations, the given Function in order to pass only the essential info to the scheduler
-void CollectInfo::parseFunction(Function &F, LoopInfo &LI){
-
-    bool isLoopHeader = false;
-    bool isLoopLatch = false;
-    bool isLoopBody = false;
-    bool isFirstBB = true;
-
-    for (BasicBlock &BB : F) {
-        errs() << "\t\tBasic Block: " << (int*)&BB << " successor " <<(int *)(BB.getSingleSuccessor()) << " size " << BB.size() << "\n";      
-
-        if(isFirstBB){
-            isFirstBB = false;
-            parseAllocaInstructions(&BB);
-            validBBs.push_back(&BB);
-            collectLoopInfo(LI);
-        }else{
-            for(auto listIT = loopHeaderList.begin(); listIT != loopHeaderList.end(); ++listIT){
-                if(*listIT == (int*)(&BB)){
-                    //current BB is a loop header
-                    isLoopHeader = true;
-                }
-            }
-
-            for(auto listIT = loopLatchList.begin(); listIT != loopLatchList.end(); ++listIT){
-                if(*listIT == (int*)(&BB)){
-                    //current BB is a loop latch
-                    isLoopLatch = true;
-                }
-            }
-
-            for(auto listIT = loopBodyList.begin(); listIT != loopBodyList.end(); ++listIT){
-                if(*listIT == (int*)(&BB)){
-                    //current BB is a loop body
-                    isLoopBody = true;
-                }
-            }
-
-            if(isLoopBody){
-                //Parse loop body and put it in the list of valid BBs
-                parseLoopBody(BB);
-                validBBs.push_back(&BB);
-            }else if(!isLoopHeader && !isLoopLatch){
-                //If the BB is neither a loop header or a loop latch (and it is not a loop body),
-                //it means it refers to a valid block (for scheduling) outside of a loopù
-                parseLoopBody(BB);
-                validBBs.push_back(&BB);
-            }
-
-            isLoopHeader = false;
-            isLoopLatch = false;
-            isLoopBody = false;
-        }
-        
-    }
-
-    errs() << "valid BBs are:\n";
-    for(auto it = validBBs.begin(); it != validBBs.end(); ++it){
-        errs() << "\t\tBasic Block: " << (int*)(*it) << " with size: " << (*it)->size() << "\n";
-    }
-}
-
-///Function useful to know if the valid BB instruction must be considered for scheduling
-bool CollectInfo::isValidInst(Instruction &I){
-    bool changed = false;
-
-    if(StoreInst *SI = dyn_cast<StoreInst>(&I)){
-        //If the destination of the store instruction is an iterator-related register, it must be erased
-        if(iteratorsAliasMap.find((int*)(SI->getOperand(1))) != iteratorsAliasMap.end()){
-            changed = true;
-        }
-    }else if(LoadInst *LI = dyn_cast<LoadInst>(&I)){
-        //If the loaded register is an iterator, the instruction must be removed
-        if(iteratorsAliasMap.find((int*)(LI->getOperand(0))) != iteratorsAliasMap.end()){
-            changed = true;
-        }
-    }else if(dyn_cast<SExtInst>(&I)){
-        changed = true;
-    }else if(dyn_cast<GetElementPtrInst>(&I)){
-        changed = true;
-    }else if(BinaryOperator *BO = dyn_cast<BinaryOperator> (&I)){
-        if(BO->getOpcode() == Instruction::Add){
-            //If the destination register is a combination of iterators, the instruction must be removed
-            for(auto listIT = combinedIterators.begin(); listIT != combinedIterators.end(); ++listIT){
-                if(*listIT == (int*)(&I)){
-                    changed = true;
-                }
-            }
-        }else if(BO->getOpcode() == Instruction::Sub){
-            //If the destination register is a combination of iterators, the instruction must be removed
-            for(auto listIT = combinedIterators.begin(); listIT != combinedIterators.end(); ++listIT){
-                if(*listIT == (int*)(&I)){
-                    changed = true;
-                }
-            }
-        }
-    }else if(dyn_cast<BranchInst>(&I)){
-        changed = true;
-    }
-
-    return !(changed);
-}
-
-///Function useful to retrieved the allocated register related to the input alias operand
-int * CollectInfo::getAllocatedReg(int * op){
-    for(aliasInfoMapIT = aliasInfoMap.begin(); aliasInfoMapIT != aliasInfoMap.end(); ++aliasInfoMapIT){
-        for(auto listIT = (aliasInfoMapIT->second).begin(); listIT != (aliasInfoMapIT->second).end(); ++listIT){
-            if(*listIT == op){
-                //Retrieve allocated register
-                return aliasInfoMapIT->first;
-            }
-        }
-    } 
-
-    return nullptr;
-}
-
-///Function useful to get the size of the array/matrix given in input the allocated reg
-int CollectInfo::getArraySize(int *reg){
-    arraysInfoMapIT = arraysInfoMap.find(reg);
-    if(arraysInfoMapIT == arraysInfoMap.end()){
-        return 1;
-    }else{
-        return ((arraysInfoMapIT->second).front())*((arraysInfoMapIT->second).back());
-    }
-}
-
-///Function useful to get the number of columns of the array
-int CollectInfo::getArrayCols(int *reg){
-    arraysInfoMapIT = arraysInfoMap.find(reg);
-    if(arraysInfoMapIT == arraysInfoMap.end()){
-        return 0;
-    }else{
-        return (arraysInfoMapIT->second).back();
-    }
-}
-
-///Function useful to get the number of rows of the array
-int CollectInfo::getArrayRows(int *reg){
-    arraysInfoMapIT = arraysInfoMap.find(reg);
-    if(arraysInfoMapIT == arraysInfoMap.end()){
-        return 0;
-    }else{
-        return (arraysInfoMapIT->second).front();
-    }
-}
-
 ///Function useful to know if the current BB is a loop's body
 bool CollectInfo::isLoopBody(const BasicBlock* BB){
 
@@ -890,62 +1002,80 @@ bool CollectInfo::isLoopBody(const BasicBlock* BB){
 
 }
 
-///Function useful to check the operand refers to an array
-bool CollectInfo::isArray(int* operand){
-    if(arraysInfoMap.find(operand) != arraysInfoMap.end()){
-        return true;
-    }
+//----------------------------END FUNCTIONS FOR LOOP INFO EXTRACTION--------------------------
 
-    return false;
-}
+
+
+
+//----------------------------FUNCTIONS FOR POINTER INFO EXTRACTION---------------------------
 
 ///Function useful to set useful parameters for the binding phase concerning arrays and their indexes
 void CollectInfo::setPointerInfo(int* pointer, Instruction* I){
-
+    if(debugMode){
     errs() << "Starting setPointerInfo\n";
+    }
+
+    /*
+
+        The first part of this function is devoted to:
+        
+            retrieve the current info about the pointer
+            get the iterator of the innermost loop that contains the pointer
+            get the iterators of the outer loops
+            get the info about the pointer indexes, which could be either 1 or 2 dependending on the dimensions of the pointer array
+
+    */
 
     PointerInfoTable::pointerInfoStruct pointerInfo;
+
     //Retrieving the info about the array (pointer)
     pointerInfo = PIT.getPointerInfo(pointer);
 
+    //Retrieving info about the indexes of the pointer
     PointerInfoTable::indexInfoStruct firstIdxInfo = pointerInfo.firstIdxInfo;
     PointerInfoTable::indexInfoStruct secondIdxInfo = pointerInfo.secondIdxInfo;
 
-    //Getting the loop body basic block
+    //Getting the basic block that represents the loop body in which the instruction is contained
     BasicBlock* instrLoopBody = I->getParent();
 
-    //errs() << "\tLoop Body " << instrLoopBody << "\n";
     //Getting the iterator associated to the loop whose loop body is instrLoopBody
     int* loopIteratorOp = LIT.getLoopIteratorFromLoopBody((int*)(instrLoopBody));
 
+    //Setting the info about the loop iterator in pointerInfo
     pointerInfo.loopIterator = loopIteratorOp;
 
     //Getting the nested structure of loops in which this loop is present
     std::pair<int*, std::list<int*>> nestedLoops = LIT.getNestedLoops(loopIteratorOp); 
 
-    //List of loops iterator of loops containing the loopIteratorOp loop
+    //List of the iterators of higher level loops wrt to the loop associated to loopIteratorOp
     std::list<int*> higherLevelLoops = nestedLoops.second;
+
+
+
 
     //Iteration domain
     std::list<int*> iterationVector = LIT.getIterationVector(loopIteratorOp);
 
-    //errs() << "\tLoop iterator " << loopIteratorOp << " higher level one " << higherLevelLoops.front() << "\n";
+    //Putting the total number of iterations for each loop in the nested structure in iterationList
+    for(auto listIT = iterationVector.begin(); listIT != iterationVector.end(); ++listIT){
+        iterationList.push_back((LIT.getLoopInfo(*listIT)).iterations);
+    }
+    std::reverse(iterationList.begin(), iterationList.end());
+
+
+
 
     //Finding the allocated reg relative to the current array pointer
     //and then search in arraysInfoMap to retrieve rows and columns of the entire array
     int* allocatedArrayReg = getAllocatedReg(pointer);
 
-    //errs() << "\tAllocated reg " << allocatedArrayReg << "\n";
+    //Getting the sizes of the array
     std::list<int> arraySizes = (arraysInfoMap.find(allocatedArrayReg))->second;
 
-    //errs() << "\tAllocated reg size rows " << arraySizes.front() << " size cols " << arraySizes.back() << "\n";
     int arrayRows = arraySizes.front();
-    //int arrayCols = arraySizes.back();
-
-    //errs() << "\tfirst index it: " << (firstIdxInfo.iterators).front() << " " << (firstIdxInfo.iterators).size() << "\n";
-    //errs() << "\tsecond index it: " << (secondIdxInfo.iterators).front() <<  " " << (secondIdxInfo.iterators).size() << "\n";
+    int arrayCols = arraySizes.back();
     
-
+    //Check if array is matrix or 1-dim array and set indexes info
     std::list<PointerInfoTable::indexInfoStruct> indexInfoList;
     if(arrayRows > 1){
         indexInfoList.push_back(pointerInfo.firstIdxInfo);
@@ -953,274 +1083,13 @@ void CollectInfo::setPointerInfo(int* pointer, Instruction* I){
     }else{
         indexInfoList.push_back(pointerInfo.firstIdxInfo);
     }
-    
 
 
-    if(arrayRows > 1){
-        //arrayOp refers to a matrix
-
-        if((firstIdxInfo.iterators).size() == 1 && (secondIdxInfo.iterators).size() == 1){
-            //The two array indexes are composed by only one iterator
-
-            //Retrieving the iterators of the first and the second index
-            int* firstIdxIt = (firstIdxInfo.iterators).front();
-            int* secondIdxIt = (secondIdxInfo.iterators).front();
-
-            //Retrieving loop infos of each iterator
-            LoopInfoTable::loopInfoStruct LISIt1 = LIT.getLoopInfo(firstIdxIt);
-            LoopInfoTable::loopInfoStruct LISIt2 = LIT.getLoopInfo(secondIdxIt);
-
-            if(LISIt1.isFinalValueConstant && LISIt1.isInitValueConstant && LISIt2.isFinalValueConstant && LISIt2.isInitValueConstant){
-                //The two iterators bounds (init value and final value) are integer numbers
-
-                if(firstIdxIt == loopIteratorOp && std::find(higherLevelLoops.begin(), higherLevelLoops.end(), secondIdxIt) != higherLevelLoops.end()){
-
-                    /*
-                        for(secondIdx){
-                            for(firstIdx){
-                                array[firstIdx][secondIdx]
-                            }
-                        }
-                    */
-
-                    pointerInfo.colFirst = true;
-                    pointerInfo.rowFirst = false;
-                    pointerInfo.setCols =  LISIt2.iterations;
-                    pointerInfo.setRows = LISIt1.iterations;
-                    pointerInfo.numberOfSets = 1;
-                }else if(secondIdxIt == loopIteratorOp && std::find(higherLevelLoops.begin(), higherLevelLoops.end(), firstIdxIt) != higherLevelLoops.end()){
-                    /*
-                        for(firstIdx){
-                            for(secondIdx){
-                                array[firstIdx][secondIdx]
-                            }
-                        }
-                    */
-
-                    pointerInfo.colFirst = false;
-                    pointerInfo.rowFirst = true;
-                    pointerInfo.setCols = LISIt2.iterations;
-                    pointerInfo.setRows = LISIt1.iterations;
-                    pointerInfo.numberOfSets = 1;
-
-                }
-            }else{
-                
-                auto higherLevelLoopsIT = higherLevelLoops.begin();
-                std::advance(higherLevelLoopsIT, 1);
-                LoopInfoTable::loopInfoStruct LISIt3 = LIT.getLoopInfo(*higherLevelLoopsIT);
-                LoopInfoTable::loopInfoStruct LISIt4 = LIT.getLoopInfo(higherLevelLoops.back());
-
-
-                if(firstIdxIt == loopIteratorOp && secondIdxIt == higherLevelLoops.front()){
-
-                    /*
-                        for(secondIdx){
-                            for(firstIdx){
-                                array[firstIdx][secondIdx]
-                            }
-                        }
-                    */
-
-                    pointerInfo.colFirst = true;
-                    pointerInfo.rowFirst = false;
-                    pointerInfo.setCols =  -1;
-                    pointerInfo.setRows = -1;
-                    pointerInfo.numberOfSets = LISIt3.iterations * LISIt4.iterations;
-                }else if(secondIdxIt == loopIteratorOp && firstIdxIt == higherLevelLoops.front()){
-                    /*
-                        for(firstIdx){
-                            for(secondIdx){
-                                array[firstIdx][secondIdx]
-                            }
-                        }
-                    */
-
-                    pointerInfo.colFirst = false;
-                    pointerInfo.rowFirst = true;
-                    pointerInfo.setCols =  -1;
-                    pointerInfo.setRows = -1;
-                    pointerInfo.numberOfSets = LISIt3.iterations * LISIt4.iterations;
-
-                }
-            }
-
-        }else if((firstIdxInfo.iterators).size() == 2 && (secondIdxInfo.iterators).size() == 2){
-            //The two array indexes are composed by two iterators each
-
-            //Retrieving the iterators of the first and the second index
-            int* it1  = (firstIdxInfo.iterators).front(); //first iterator of the first index
-            int* it2  = (firstIdxInfo.iterators).back(); //second iterator of the first index
-            int* it3 = (secondIdxInfo.iterators).front(); //first iterator of the second index
-            int* it4 = (secondIdxInfo.iterators).back(); //second iterator of the second index
-
-            //If both operations between iterators of index are additions, i.e. [i + k][j + l]
-            if(firstIdxInfo.operation == Instruction::Add && secondIdxInfo.operation == Instruction::Add){
-                
-                //Retrieving the depth of the loop associated to each iterator (Outermost loop has depth 1 according to LLVM loop definition)
-                //Surely, the most internal loop, the one with highest depth, is the one whose iterator is loopIteratorOp
-                int dIt1 = ((LIT.getNestedLoops(it1)).second).size() + 1;
-                int dIt2 = ((LIT.getNestedLoops(it2)).second).size() + 1;
-                int dIt3 = ((LIT.getNestedLoops(it3)).second).size() + 1;
-                int dIt4 = ((LIT.getNestedLoops(it4)).second).size() + 1;
-
-                //Retrieving loop infos of each iterator
-                LoopInfoTable::loopInfoStruct LISIt1 = LIT.getLoopInfo(it1);
-                LoopInfoTable::loopInfoStruct LISIt2 = LIT.getLoopInfo(it2);
-                LoopInfoTable::loopInfoStruct LISIt3 = LIT.getLoopInfo(it3);
-                LoopInfoTable::loopInfoStruct LISIt4 = LIT.getLoopInfo(it4);
-
-
-                if(dIt1 == 1 && dIt3 == 2 && dIt2 == 3 && dIt4 == 4){
-                    //[i + k][j + l]
-                    pointerInfo.rowFirst = true;
-                    pointerInfo.colFirst = false;
-                    pointerInfo.rowFirstSet = true;
-                    pointerInfo.colFirstSet = false;
-
-                    pointerInfo.setRows = LISIt2.iterations;
-                    pointerInfo.setCols = LISIt4.iterations;
-
-                }else if(dIt1 == 1 && dIt3 == 2 && dIt2 == 4 && dIt4 == 3){
-                    //[i + l][j + k]
-                    pointerInfo.rowFirst = true;
-                    pointerInfo.colFirst = false;
-                    pointerInfo.rowFirstSet = false;
-                    pointerInfo.colFirstSet = true;
-
-                    pointerInfo.setRows = LISIt4.iterations;
-                    pointerInfo.setCols = LISIt2.iterations;
-
-                }else if(dIt1 == 2 && dIt3 == 1 && dIt2 == 3 && dIt4 == 4){
-                    //[j + k][i + l]
-                    pointerInfo.rowFirst = false;
-                    pointerInfo.colFirst = true;
-                    pointerInfo.rowFirstSet = true;
-                    pointerInfo.colFirstSet = false;
-
-                    pointerInfo.setRows = LISIt2.iterations;
-                    pointerInfo.setCols = LISIt4.iterations;
-
-                }else if(dIt1 == 2 && dIt3 == 1 && dIt2 == 4 && dIt4 == 3){
-                    //[j + l][i + k]
-                    pointerInfo.rowFirst = false;
-                    pointerInfo.colFirst = true;
-                    pointerInfo.rowFirstSet = false;
-                    pointerInfo.colFirstSet = true;
-
-                    pointerInfo.setRows = LISIt4.iterations;
-                    pointerInfo.setCols = LISIt4.iterations;
-
-                }
-
-                pointerInfo.numberOfSets = LISIt1.iterations * LISIt3.iterations;
-
-            }
-
-        }
-    }else{
-        //arrayOp refers to a 1-dim array
-
-        if(!((firstIdxInfo.iterators).empty())){
-            //If the index is composed of at least one iterator
-
-            if((firstIdxInfo.iterators).size() == 1){
-                //Index is composed by a single iterator
-
-                //Retrieving the iterator
-                int* firstIdxIt = (firstIdxInfo.iterators).front();
-                //Retrieving loop infos of each iterator
-                LoopInfoTable::loopInfoStruct LISIt1 = LIT.getLoopInfo(firstIdxIt);
-
-                if(firstIdxIt == loopIteratorOp){
-                    /*
-                        for(firstIdx){
-                            array[firstIdx]
-                        }
-                    */
-
-
-                    pointerInfo.colFirst = false;
-                    pointerInfo.rowFirst = true;
-                    pointerInfo.setCols = LISIt1.iterations;
-                    pointerInfo.setRows = arrayRows;
-                    pointerInfo.numberOfSets = 1;
-                }else if(firstIdxIt == higherLevelLoops.front()){
-                    /*
-                        for(firstIdx){
-                            for(secondIdx){
-                                array[firstIdx]
-                            }
-                        }
-                    */
-                    pointerInfo.colFirst = true;
-                    pointerInfo.rowFirst = false;
-                    pointerInfo.setCols = LISIt1.iterations;
-                    pointerInfo.setRows = arrayRows;
-                    pointerInfo.numberOfSets = 1;
-                }
-            }else if((firstIdxInfo.iterators).size() > 1){
-                //Index is composed by a 2 iterators
-
-                //The two array indexes are composed by two iterators each
-
-                //Retrieving the iterators of the first index
-                int* it1  = (firstIdxInfo.iterators).front(); //first iterator of the first index
-                int* it2  = (firstIdxInfo.iterators).back(); //second iterator of the first index
-
-                //If both operations between iterators of index are additions, i.e. [i + k][j + l]
-                if(firstIdxInfo.operation == Instruction::Add){
-                    
-                    //Retrieving the depth of the loop associated to each iterator (Outermost loop has depth 1 according to LLVM loop definition)
-                    //Surely, the most internal loop, the one with highest depth, is the one whose iterator is loopIteratorOp
-                    int dIt1 = ((LIT.getNestedLoops(it1)).second).size() + 1;
-                    int dIt2 = ((LIT.getNestedLoops(it2)).second).size() + 1;
-
-                    //Retrieving loop infos of each iterator
-                    LoopInfoTable::loopInfoStruct LISIt1 = LIT.getLoopInfo(it1);
-                    LoopInfoTable::loopInfoStruct LISIt2 = LIT.getLoopInfo(it2);
-
-                    if(dIt1 > dIt2){
-                        /*
-                            for(it2)
-                                for(it1)
-                                    array[it1 + it2]                    
-                        */
-
-                        pointerInfo.setRows = LISIt2.iterations;
-                        pointerInfo.numberOfSets = LISIt1.iterations;
-
-                    }else if(dIt1 < dIt2){
-                        /*
-                            for(it1)
-                                for(it2)
-                                    array[it1 + it2]                    
-                        */
-
-                        pointerInfo.setRows = LISIt1.iterations;
-                        pointerInfo.numberOfSets = LISIt2.iterations;
-
-                    }
-
-
-                    pointerInfo.rowFirst = true;
-                    pointerInfo.colFirst = false;
-                    pointerInfo.rowFirstSet = false;
-                    pointerInfo.colFirstSet = true;
-
-                    pointerInfo.setCols = 1;
-
-                }
-            }
-        }else{
-            //The index is a constant
-            pointerInfo.colFirst = false;
-            pointerInfo.rowFirst = true;
-            pointerInfo.setCols = 1;
-            pointerInfo.setRows = 1;
-            pointerInfo.numberOfSets = 1;
-        }
-    }
+    /*
+        
+        The second part of this function is devoted to extract the access pattern of the pointer
+            
+    */
 
     //integer keeping track of the current index of the pointer
     int currIndex = 0;
@@ -1274,14 +1143,398 @@ void CollectInfo::setPointerInfo(int* pointer, Instruction* I){
 
     accessPattern.setRows(currIndex);
     accessPattern.setCols(index);
+
+    accessPattern.detectAccessPatternType();
+        
+    accessPattern.detectZeroCols();
+
     accessPatternConstant.setRows(currIndex);
     accessPatternConstant.setCols(1);
     pointerInfo.pointerAccessPattern = accessPattern;
     pointerInfo.pointerAccessPatternConstant = accessPatternConstant;
     
-    PIT.modifyPointerInfo(pointer, pointerInfo);
-    //IMPLEMENT OTHER CASES
+    /*
 
+        The third part of this function is devoted to effectively extract and set the information about the pointer 
+            
+    */
+                
+    //Dimensions of the pointer array
+    pointerInfo.arrayCols = arrayCols;
+    pointerInfo.arrayRows = arrayRows;
+
+
+    if(arrayRows > 1){
+        //The array associated to the pointer is a matrix
+
+        if((firstIdxInfo.iterators).size() == 1 && (secondIdxInfo.iterators).size() == 1){
+            //The two array indexes are composed by only one iterator
+
+            //Retrieving the iterators of the first and the second index
+            int* it1 = (firstIdxInfo.iterators).front();
+            int* it3 = (secondIdxInfo.iterators).back();
+
+            //Retrieving loop infos of each iterator
+            LoopInfoTable::loopInfoStruct LISIt1 = LIT.getLoopInfo(it1);
+            LoopInfoTable::loopInfoStruct LISIt3 = LIT.getLoopInfo(it3);
+
+            if(LISIt1.isFinalValueConstant && LISIt1.isInitValueConstant && LISIt3.isFinalValueConstant && LISIt3.isInitValueConstant){
+                //The two iterators bounds (init value and final value) are integer numbers
+
+                //No subsets are present
+                pointerInfo.setRows = -1;
+                pointerInfo.setCols = -1;
+                pointerInfo.spacingInSubsetX = -1;
+                pointerInfo.spacingInSubsetY = -1;
+
+                //Spacings between two consecutive elements
+                pointerInfo.spacingX = LISIt3.iteratorIncrement;
+                pointerInfo.spacingY = LISIt1.iteratorIncrement;
+
+                //Final and initial value of the iterators are used to set the offsets
+                pointerInfo.offsetX = LISIt3.iteratorInitValue + accessPatternConstant(1, 0);
+                pointerInfo.offsetY = LISIt1.iteratorInitValue + accessPatternConstant(0, 0);
+                //Last element taken into account in each direction     
+                pointerInfo.stopX = pointerInfo.offsetX + pointerInfo.spacingX * (LISIt3.iterations - 1);
+                pointerInfo.stopY = pointerInfo.offsetY + pointerInfo.spacingY * (LISIt1.iterations - 1);
+
+                //TO BE MODIFIED WHEN expandAddressList is issued
+                pointerInfo.numberOfSubsets = 1;
+                pointerInfo.numberOfSubsetsElements = LISIt1.iterations * LISIt3.iterations;
+                
+
+            }else{
+                //One of two iterators bounds (specifically the final one) are not integer numbers, but other iterators
+                
+                //DA RIVEDERE
+                /*
+                auto higherLevelLoopsIT = higherLevelLoops.begin();
+                std::advance(higherLevelLoopsIT, 1);
+                LoopInfoTable::loopInfoStruct LISIt3 = LIT.getLoopInfo(*higherLevelLoopsIT);
+                LoopInfoTable::loopInfoStruct LISIt4 = LIT.getLoopInfo(higherLevelLoops.back());
+
+
+                if(it1 == loopIteratorOp && it2 == higherLevelLoops.front()){
+
+                    pointerInfo.setCols =  -1;
+                    pointerInfo.setRows = -1;
+
+                }else if(it2 == loopIteratorOp && it1 == higherLevelLoops.front()){
+                    
+                    pointerInfo.setCols =  -1;
+                    pointerInfo.setRows = -1;
+
+                }
+                */
+            }
+
+        }else if((firstIdxInfo.iterators).size() == 2 && (secondIdxInfo.iterators).size() == 2){
+            //The two array indexes are composed by two iterators each
+
+            //Retrieving the iterators of the first and the second index
+            int* it1 = (firstIdxInfo.iterators).front();
+            int* it2 = (firstIdxInfo.iterators).back();
+            int* it3 = (secondIdxInfo.iterators).front();
+            int* it4 = (secondIdxInfo.iterators).back();
+
+            //If both operations between iterators of index are additions, i.e. [i + k][j + l]
+            if(firstIdxInfo.operation == Instruction::Add && secondIdxInfo.operation == Instruction::Add){
+
+                //Retrieving loop infos of each iterator
+                LoopInfoTable::loopInfoStruct LISIt1 = LIT.getLoopInfo(it1);
+                LoopInfoTable::loopInfoStruct LISIt2 = LIT.getLoopInfo(it2);
+                LoopInfoTable::loopInfoStruct LISIt3 = LIT.getLoopInfo(it3);
+                LoopInfoTable::loopInfoStruct LISIt4 = LIT.getLoopInfo(it4);
+
+                //Info about subsets
+                pointerInfo.setRows = LISIt2.iterations/LISIt2.iteratorIncrement;
+                pointerInfo.setCols = LISIt4.iterations/LISIt4.iteratorIncrement;
+                pointerInfo.spacingInSubsetX = LISIt4.iteratorIncrement;
+                pointerInfo.spacingInSubsetY = LISIt2.iteratorIncrement;
+
+                //Spacings between two consecutive elements
+                pointerInfo.spacingX = LISIt3.iteratorIncrement;
+                pointerInfo.spacingY = LISIt1.iteratorIncrement;
+
+                //Final and initial value of the iterators are used to set the offsets
+                pointerInfo.offsetX = LISIt3.iteratorInitValue + LISIt4.iteratorInitValue + accessPatternConstant(1, 0);
+                pointerInfo.offsetY = LISIt1.iteratorInitValue + LISIt2.iteratorInitValue + accessPatternConstant(0, 0);
+                //Last element taken into account in each direction   
+                pointerInfo.stopX = pointerInfo.offsetX + pointerInfo.spacingX * (LISIt3.iterations - 1);
+                pointerInfo.stopY = pointerInfo.offsetY + pointerInfo.spacingY * (LISIt1.iterations - 1);
+
+                pointerInfo.numberOfSubsetsElements = LISIt2.iterations * LISIt4.iterations;
+                pointerInfo.numberOfSubsets = LISIt1.iterations * LISIt3.iterations;
+            }
+
+        }else if((firstIdxInfo.iterators).size() == 1 && (secondIdxInfo.iterators).size() == 2){
+            //The first array index is composed of one iterator and the second by two iterators
+
+            //Retrieving the iterators of the first and the second index
+            int* it1 = (firstIdxInfo.iterators).front();
+            int* it3 = (secondIdxInfo.iterators).front();
+            int* it4 = (secondIdxInfo.iterators).back();
+
+            //If the operation between iterators of index 2 is an addition, i.e. [i][j + k]
+            if(secondIdxInfo.operation == Instruction::Add){
+
+                //Retrieving loop infos of each iterator
+                LoopInfoTable::loopInfoStruct LISIt1 = LIT.getLoopInfo(it1);
+                LoopInfoTable::loopInfoStruct LISIt3 = LIT.getLoopInfo(it3);
+                LoopInfoTable::loopInfoStruct LISIt4 = LIT.getLoopInfo(it4);                
+
+                //Info about subsets, which are 1 X N
+                pointerInfo.setRows = 1;
+                pointerInfo.setCols = ceil((float)(LISIt4.iterations/LISIt4.iteratorIncrement));
+                pointerInfo.spacingInSubsetX = LISIt4.iteratorIncrement;
+                pointerInfo.spacingInSubsetY = -1;
+
+                //Spacings between two consecutive elements
+                pointerInfo.spacingX = LISIt3.iteratorIncrement;
+                pointerInfo.spacingY = LISIt1.iteratorIncrement;
+
+                //Final and initial value of the iterators are used to set the offsets
+                pointerInfo.offsetX = LISIt3.iteratorInitValue + LISIt4.iteratorInitValue + accessPatternConstant(1, 0);
+                pointerInfo.offsetY = LISIt1.iteratorInitValue + accessPatternConstant(0, 0);
+                //Last element taken into account in each direction   
+                pointerInfo.stopX = pointerInfo.offsetX + pointerInfo.spacingX * (LISIt3.iterations - 1);
+                pointerInfo.stopY = pointerInfo.offsetY + pointerInfo.spacingY * (LISIt1.iterations - 1);
+
+                pointerInfo.numberOfSubsetsElements = LISIt4.iterations;
+                pointerInfo.numberOfSubsets = LISIt1.iterations * LISIt3.iterations;
+                
+            }
+        }else if((firstIdxInfo.iterators).size() == 2 && (secondIdxInfo.iterators).size() == 1){
+            //The first array index is composed of one iterator and the second by two iterators
+
+            //Retrieving the iterators of the first and the second index
+            int* it1 = (firstIdxInfo.iterators).front();
+            int* it2 = (firstIdxInfo.iterators).back();
+            int* it3 = (secondIdxInfo.iterators).front();
+
+            //If the operation between iterators of index 2 is an addition, i.e. [i + k][j]
+            if(secondIdxInfo.operation == Instruction::Add){
+
+                //Retrieving loop infos of each iterator
+                LoopInfoTable::loopInfoStruct LISIt1 = LIT.getLoopInfo(it1);
+                LoopInfoTable::loopInfoStruct LISIt2 = LIT.getLoopInfo(it2);
+                LoopInfoTable::loopInfoStruct LISIt3 = LIT.getLoopInfo(it3);              
+
+                //Subsets info
+                pointerInfo.setRows = ceil((float)(LISIt2.iterations/LISIt2.iteratorIncrement));
+                pointerInfo.setCols = 1;
+                pointerInfo.spacingInSubsetX = -1;
+                pointerInfo.spacingInSubsetY = LISIt2.iteratorIncrement;
+
+                //Spacings between two consecutive elements
+                pointerInfo.spacingX = LISIt3.iteratorIncrement;
+                pointerInfo.spacingY = LISIt1.iteratorIncrement;
+
+                //Final and initial value of the iterators are used to set the offsets
+                pointerInfo.offsetX = LISIt1.iteratorInitValue + accessPatternConstant(1, 0);
+                pointerInfo.offsetY = LISIt1.iteratorInitValue + LISIt2.iteratorInitValue + accessPatternConstant(0, 0);
+                //Last element taken into account in each direction   
+                pointerInfo.stopX = pointerInfo.offsetX + pointerInfo.spacingX * (LISIt3.iterations - 1);
+                pointerInfo.stopY = pointerInfo.offsetY + pointerInfo.spacingY * (LISIt1.iterations - 1);
+
+                pointerInfo.numberOfSubsetsElements = LISIt2.iterations;
+                pointerInfo.numberOfSubsets = LISIt1.iterations * LISIt3.iterations;
+
+            }
+        }
+    }else{
+        //arrayOp refers to a 1-dim array
+
+        if(!((firstIdxInfo.iterators).empty())){
+            //If the index is composed of at least one iterator
+
+            if((firstIdxInfo.iterators).size() == 1){
+                //Index is composed by a single iterator
+
+                //Retrieving the iterator
+                int* it1 = (firstIdxInfo.iterators).front();
+
+                //Retrieving loop infos of each iterator
+                LoopInfoTable::loopInfoStruct LISIt1 = LIT.getLoopInfo(it1);
+
+                //No subsets are present
+                pointerInfo.setRows = -1;
+                pointerInfo.setCols = -1;
+                pointerInfo.spacingInSubsetX = -1;
+                pointerInfo.spacingInSubsetY = -1;
+
+                //Spacings between two consecutive elements
+                pointerInfo.spacingX = LISIt1.iteratorIncrement;
+                pointerInfo.spacingY = 1;
+
+                //Final and initial value of the iterators are used to set the offsets
+                pointerInfo.offsetX = LISIt1.iteratorInitValue + accessPatternConstant(0, 0);
+                pointerInfo.offsetY = 0;
+                pointerInfo.stopX = pointerInfo.offsetX + pointerInfo.spacingX * (LISIt1.iterations - 1);
+                pointerInfo.stopY = 0;
+
+                pointerInfo.numberOfSubsetsElements = LISIt1.iterations;
+                pointerInfo.numberOfSubsets = 1;
+
+            }else if((firstIdxInfo.iterators).size() > 1){
+                //Index is composed by a 2 iterators
+
+                //The two array indexes are composed by two iterators each
+
+                //Retrieving the iterators of the first index
+                int* it1  = (firstIdxInfo.iterators).front(); //first iterator of the first index
+                int* it2  = (firstIdxInfo.iterators).back(); //second iterator of the first index
+
+                //If both operations between iterators of index are additions, i.e. [i + k][j + l]
+                if(firstIdxInfo.operation == Instruction::Add){
+
+                    //Retrieving loop infos of each iterator
+                    LoopInfoTable::loopInfoStruct LISIt1 = LIT.getLoopInfo(it1);
+                    LoopInfoTable::loopInfoStruct LISIt2 = LIT.getLoopInfo(it2);
+
+                    //Subsets info
+                    pointerInfo.setRows = 1;
+                    pointerInfo.setCols = ceil((float)(LISIt2.iterations/LISIt2.iteratorIncrement));
+                    pointerInfo.spacingInSubsetX = LISIt2.iteratorIncrement;
+                    pointerInfo.spacingInSubsetY = -1;
+
+                    //Spacings between two consecutive elements
+                    pointerInfo.spacingX = LISIt1.iteratorIncrement;
+                    pointerInfo.spacingY = -1;
+
+                    //Final and initial value of the iterators are used to set the offsets
+                    pointerInfo.offsetX = LISIt1.iteratorInitValue + LISIt2.iteratorInitValue + accessPatternConstant(0, 0);
+                    pointerInfo.offsetY = -1;
+                    pointerInfo.stopX = pointerInfo.offsetX + pointerInfo.spacingX * (LISIt1.iterations - 1);
+                    pointerInfo.stopY = -1;
+
+                    pointerInfo.numberOfSubsetsElements = LISIt2.iterations;
+                    pointerInfo.numberOfSubsets = LISIt1.iterations;
+
+                }
+            }
+        }else{
+            //The index is a constant
+
+            //TO BE DONE ...
+
+            //pointerInfo.setRows = ceil((float)(LISIt2.iterations/LISIt2.iteratorIncrement));
+            //pointerInfo.setCols = ceil((float)(LISIt4.iterations/LISIt4.iteratorIncrement));
+            //pointerInfo.spacingX = LISIt3.iteratorIncrement;
+            //pointerInfo.spacingY = LISIt1.iteratorIncrement;
+            //pointerInfo.spacingInSubsetX = LISIt4.iteratorIncrement;
+            //pointerInfo.spacingInSubsetY = LISIt2.iteratorIncrement;
+
+        }
+    }
+
+    
+    PIT.modifyPointerInfo(pointer, pointerInfo);
+
+}
+
+//----------------------------END FUNCTIONS FOR POINTER INFO EXTRACTION-----------------------
+
+
+//----------------------------UTILITY FUNCTIONS---------------------------
+
+///Function useful to check the operand refers to an array
+bool CollectInfo::isArray(int* operand){
+    if(arraysInfoMap.find(operand) != arraysInfoMap.end()){
+        return true;
+    }
+
+    return false;
+}
+
+///Function useful to know if the valid BB instruction must be considered for scheduling
+bool CollectInfo::isValidInst(Instruction &I){
+    bool changed = false;
+
+    if(StoreInst *SI = dyn_cast<StoreInst>(&I)){
+        //If the destination of the store instruction is an iterator-related register, it must be erased
+        if(iteratorsAliasMap.find((int*)(SI->getOperand(1))) != iteratorsAliasMap.end()){
+            changed = true;
+        }
+    }else if(LoadInst *LI = dyn_cast<LoadInst>(&I)){
+        //If the loaded register is an iterator, the instruction must be removed
+        if(iteratorsAliasMap.find((int*)(LI->getOperand(0))) != iteratorsAliasMap.end()){
+            changed = true;
+        }
+    }else if(dyn_cast<SExtInst>(&I)){
+        changed = true;
+    }else if(dyn_cast<GetElementPtrInst>(&I)){
+        changed = true;
+    }else if(BinaryOperator *BO = dyn_cast<BinaryOperator> (&I)){
+        if(BO->getOpcode() == Instruction::Add){
+            //If the destination register is a combination of iterators, the instruction must be removed
+            for(auto listIT = combinedIterators.begin(); listIT != combinedIterators.end(); ++listIT){
+                if(*listIT == (int*)(&I)){
+                    changed = true;
+                }
+            }
+        }else if(BO->getOpcode() == Instruction::Sub){
+            //If the destination register is a combination of iterators, the instruction must be removed
+            for(auto listIT = combinedIterators.begin(); listIT != combinedIterators.end(); ++listIT){
+                if(*listIT == (int*)(&I)){
+                    changed = true;
+                }
+            }
+        }
+    }else if(dyn_cast<BranchInst>(&I)){
+        changed = true;
+    }
+
+    return !(changed);
+}
+
+///Function useful to retrieved the allocated register related to the input alias operand
+int * CollectInfo::getAllocatedReg(int * op){
+    for(aliasInfoMapIT = aliasInfoMap.begin(); aliasInfoMapIT != aliasInfoMap.end(); ++aliasInfoMapIT){
+
+        if(op == aliasInfoMapIT->first){
+            return aliasInfoMapIT->first;
+        }
+        
+        for(auto listIT = (aliasInfoMapIT->second).begin(); listIT != (aliasInfoMapIT->second).end(); ++listIT){
+            if(*listIT == op){
+                //Retrieve allocated register
+                return aliasInfoMapIT->first;
+            }
+        }
+    } 
+
+    return nullptr;
+}
+
+///Function useful to get the size of the array/matrix given in input the allocated reg
+int CollectInfo::getArraySize(int *reg){
+    arraysInfoMapIT = arraysInfoMap.find(reg);
+    if(arraysInfoMapIT == arraysInfoMap.end()){
+        return 1;
+    }else{
+        return ((arraysInfoMapIT->second).front())*((arraysInfoMapIT->second).back());
+    }
+}
+
+///Function useful to get the number of columns of the array
+int CollectInfo::getArrayCols(int *reg){
+    arraysInfoMapIT = arraysInfoMap.find(reg);
+    if(arraysInfoMapIT == arraysInfoMap.end()){
+        return 0;
+    }else{
+        return (arraysInfoMapIT->second).back();
+    }
+}
+
+///Function useful to get the number of rows of the array
+int CollectInfo::getArrayRows(int *reg){
+    arraysInfoMapIT = arraysInfoMap.find(reg);
+    if(arraysInfoMapIT == arraysInfoMap.end()){
+        return 0;
+    }else{
+        return (arraysInfoMapIT->second).front();
+    }
 }
 
 ///Function useful to return aliasInfoMap
@@ -1335,10 +1588,12 @@ CollectInfo::Instr CollectInfo::identifyInstr(Instruction &I){
 }
 
 
+//----------------------------END UTILITY FUNCTIONS---------------------------
 
 
 
 
+//----------------------------DEBUG FUNCTIONS---------------------------
 void CollectInfo::printAliasInfoMap(){
     errs()<< "The state of the Alias Map will be printed:\n\n";
 
@@ -1380,3 +1635,18 @@ void CollectInfo::printIteratorsAliasMap(){
 
     errs()<< "\n\n";
 }
+
+void CollectInfo::printCombinedIteratorsMap(){
+    errs()<< "The state of the combinedIteratorsMap will be printed:\n\n";
+
+    for (combinedIteratorsMapIT = combinedIteratorsMap.begin(); combinedIteratorsMapIT != combinedIteratorsMap.end(); ++combinedIteratorsMapIT){
+        
+        errs()<< "Combined iterators for pointer: "<< combinedIteratorsMapIT->first << " are: " << combinedIteratorsMapIT->second.iterators.front() << " and "
+                << combinedIteratorsMapIT->second.iterators.back() << "\n\n";
+
+    }
+
+    errs()<< "\n\n";
+}
+
+//----------------------------END DEBUG FUNCTIONS---------------------------

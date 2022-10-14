@@ -21,7 +21,7 @@ FiniteStateMachine::FiniteStateMachine()
 }
 
 ///Function to allocate a new operand in a precise time
-void FiniteStateMachine::addNewInstruction(int &time, int* const& operand){
+void FiniteStateMachine::addNewInstruction(int time, int* const& operand){
 
     FSM2.insert(std::pair<int*, int>(operand, time));
 

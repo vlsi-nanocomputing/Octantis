@@ -34,7 +34,7 @@ class CollectInfo
 public:
 
     ///Default constructor
-    CollectInfo();
+    CollectInfo(bool debugMode):debugMode(debugMode){};
 
     /// Recognized instructions
     enum Instr{
@@ -51,11 +51,19 @@ public:
         unknown
     };
 
-    ///Function devoted to the collection of information regarding loops
-    void collectLoopInfo(LoopInfo &LI);
+
+    ///Function that parse, collecting informations, the given Function in order to pass only the essential info to the scheduler
+    void parseFunction(Function &F, LoopInfo &LI);
 
     ///Function useful to parse alloca instructions
     void parseAllocaInstructions(BasicBlock* BB);
+
+
+
+    //----------------------------FUNCTIONS FOR LOOP INFO EXTRACTION---------------------------
+
+    ///Function devoted to the collection of information regarding loops
+    void collectLoopInfo(LoopInfo &LI);
 
     ///Function useful to parse loop preheader in order to detect iterator initialization
     void parseLoopPreheader(BasicBlock* &BB);
@@ -69,22 +77,12 @@ public:
     ///Function to parse useful information inside a loop's body
     void parseLoopBody(BasicBlock &BB);
 
-    ///Function that parse, collecting informations, the given Function in order to pass only the essential info to the scheduler
-    void parseFunction(Function &F, LoopInfo &LI);
-
-    ///Function useful to know if the valid BB instruction must be considered for scheduling
-    bool isValidInst(Instruction &I);
-
     ///Function useful to know if the current BB is a loop's body
     bool isLoopBody(const BasicBlock* BB);
 
-    ///Function that return the type of the instruction passed
-    Instr identifyInstr(Instruction &I);
 
-    ///Function useful to set useful parameters for the binding phase concerning pointers and their indexes
-    void setPointerInfo(int* pointer, Instruction* I);
 
-public:
+    //----------------------------UTILITIES FUNCTIONS---------------------------
 
     ///Function useful to return aliasInfoMap
     std::map<int*, std::list<int*>> * getAliasInfo();
@@ -107,6 +105,20 @@ public:
     ///Function useful to get the number of rows of the array
     int getArrayRows(int *reg);
 
+    ///Function useful to know if the valid BB instruction must be considered for scheduling
+    bool isValidInst(Instruction &I);
+
+    ///Function that return the type of the instruction passed
+    Instr identifyInstr(Instruction &I);
+
+
+
+    //----------------------------FUNCTIONS FOR POINTER INFO EXTRACTION---------------------------
+    ///Function useful to set useful parameters for the binding phase concerning pointers and their indexes
+    void setPointerInfo(int* pointer, Instruction* I);
+
+    
+
     /*-----------------------------DEBUG FUNCTIONS-------------------------------*/
 
     void printAliasInfoMap();
@@ -117,11 +129,16 @@ public:
 
     void printIteratorsAliasMap();
 
+    void printCombinedIteratorsMap();
+
     /*--------------------------END DEBUG FUNCTIONS------------------------------*/
     
 
     PointerInfoTable PIT;
+
     LoopInfoTable LIT;
+    
+    std::vector<int> iterationList;
 
 private:
 
@@ -131,11 +148,13 @@ private:
     ///Iterator over iteratorsAliasMap
     std::map<int*, int*>::iterator iteratorsAliasMapIT;
 
+
     ///Map useful to keep track of allocated register aliases
     std::map<int*, std::list<int*>> aliasInfoMap;
 
     ///Iterator over aliasInfoMap
     std::map<int*, std::list<int*>>::iterator aliasInfoMapIT;
+
 
     ///Map useful to know info about loop iterators' initial values
     std::map<int*, int> initValuesMap;
@@ -143,20 +162,21 @@ private:
     ///Iterator over the iteratorsInfoMap map
     std::map<int*, int>::iterator initValuesMapIT;
 
+
     //list of BBs to be passed to the scheduler
     std::list<BasicBlock*> validBBs;
 
-    bool ptrValid = false;
-    int* tmpPointerArray;
 
-    ///Map containing information about arrays present in the function
+    ///Map containing information about size of arrays present in the function
     std::map<int*, std::list<int>> arraysInfoMap;
 
     ///Iterator over arraysInfoMap
     std::map<int*, std::list<int>>::iterator arraysInfoMapIT;
 
+
     ///Map pairing each loop with its iterator operand
     std::map<Loop*, int *> loopIteratorMap;
+
 
     ///List containing all the Loop Preheaders
     std::list<int*> loopPreheaderList;
@@ -181,8 +201,12 @@ private:
     PointerInfoTable::pointerInfoStruct tmpPointerStruct;
     int* tmpVariableInitIterator;
 
+    bool ptrValid = false;
+    int* tmpPointerArray;
 
     std::list<int*> combinedIterators;
+
+    bool debugMode;
 
 };
 
