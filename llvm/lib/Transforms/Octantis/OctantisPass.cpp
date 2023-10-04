@@ -27,14 +27,14 @@
 
 // Octantis' classes
 //#include "LiMCompiler.h"
-#include "PrintDexFile.h"
-#include "PrintVhdlFile.h"
-#include "PrintCadFile.h"
-#include "ASAP.h"
-#include "CollectInfo.h"
-#include "LiMBinder.h"
-#include "PrintConfig.h"
-#include "DependencyDetector.h"
+#include "Code_Generation/PrintDexFile.h"
+#include "Code_Generation/PrintVhdlFile.h"
+#include "Code_Generation/PrintCadFile.h"
+#include "Scheduling/ASAP.h"
+#include "Analysis/CollectInfo.h"
+#include "Binding/LiMBinder.h"
+#include "Parsers/PrintConfig.h"
+#include "Analysis/DependencyDetector.h"
 //#include "InstructionTable.h"
 
 #include <list>
@@ -43,126 +43,102 @@ using namespace llvm;
 
 namespace octantis {
 
-  cl::opt<bool> debugMode("debugMode", cl::desc("Specify debug mode"));
+    cl::opt<bool> debugMode("debugMode", cl::desc("Specify debug mode"));
 
 // OctantisPass
-struct OctantisPass : public FunctionPass {
+    struct OctantisPass : public FunctionPass {
 
-  static char ID; // Pass identification, replacement for typeid
-  OctantisPass() : FunctionPass(ID) {}
+        static char ID; // Pass identification, replacement for typeid
+        OctantisPass() : FunctionPass(ID) {}
 
-  void getAnalysisUsage(AnalysisUsage &AU) const override {
-    AU.setPreservesCFG();
-    AU.addRequired<LoopInfoWrapperPass>();
-    AU.addRequired<ScalarEvolutionWrapperPass>();
-  }
+        void getAnalysisUsage(AnalysisUsage &AU) const override {
+            AU.setPreservesCFG();
+            AU.addRequired<LoopInfoWrapperPass>();
+            AU.addRequired<ScalarEvolutionWrapperPass>();
+        }
 
-  bool runOnFunction(Function &F) override {
+        bool runOnFunction(Function &F) override {
 
-    
-    // Get the parameters of the function -> TO DO
-    /*for (auto args = F.arg_begin(); args != F.arg_end(); ++args) {
-      errs() << "A new input parameter found: " << (int *)args << "\n";
-      ASAPScheduler.addFuncInputParameter((int *)args);
-    }*/
+            //Parsing
+            ConfigurationHandler.ParseConfigFile();
 
-    ConfigurationHandler.ParseConfigFile();
-    ConfigurationHandler.printConfigParameters();
+            //Extracting information about loops
+            LoopInfo &LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
 
-    //Extracting information about loops
-    LoopInfo &LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
-
-    ScalarEvolution &SE = getAnalysis<ScalarEvolutionWrapperPass>().getSE();
+            CollectInfo InfoCollector(debugMode);
+            //Start InfoCollector pass on the current function
+            InfoCollector.parseFunction(F, LI);
 
 
-    bool ptr = false;
-    for (BasicBlock &B : F){
-      for (Instruction &I : B){
-        if(GetElementPtrInst *GEP = dyn_cast<GetElementPtrInst>(&I)){
+            /////DEBUG/////
+            /*
+            if(debugMode){
+            InfoCollector.printAliasInfoMap();
+            errs() << "\n\n\n\n";
+            InfoCollector.printArrayInfoMap();
+            errs() << "\n\n\n\n";
+            InfoCollector.printIteratorsAliasMap();
+            errs() << "\n\n\n\n";
+            instructionTable.printInstructionMap();
+            errs() << "\n\n\n\n";
+            (InfoCollector.PIT).printPointerInfoTable();
+            errs() << "\n\n\n\n";
+            (InfoCollector.LIT).printNestedLoopMap();
+            errs() << "\n\n\n\n";
+            (InfoCollector.LIT).printLoopInfoMap();
+            errs() << "\n\n\n\n";
+            InfoCollector.printAliasInfoMap();
+            errs() << "\n\n\n\n";
+            }
+            */
+            /////DEBUG/////
 
-          errs() << "NumIndices: " << GEP->getNumIndices() << " NumUses: " << GEP->getNumUses() << " pointerOpIndex: " << GEP->getPointerOperandIndex() << "\n";
+            //Construction of DFG
+            DependencyDetector dependencyDetector(InfoCollector, debugMode);
+            dependencyDetector.detectDependencies(InfoCollector.getValidBBs());
 
-          errs() << ": " <<  << "\n";
+            //Scheduling
+            if (ConfigurationHandler.getSchedulingAlgorithm() == "ASAP") {
+
+                //ASAP Scheduling
+                ASAP ASAPSched(dependencyDetector.getDependencyGraph(), debugMode);
+                ASAPSched.scheduleFunction();
+                instructionTable = ASAPSched.getScheduledIT();
+
+            }
+
+            //Binding
+            LiMBinder Binder(instructionTable, InfoCollector, debugMode, ConfigurationHandler.getWordLength(), ConfigurationHandler.getOptimizationTarget());
+
+            errs() << "End of Synthesis Process\n";
+
+
+            //.vhd file generation
+            PrintVhdlFile VhdlPrinter(&(Binder.MemArray), &(Binder.FSMLim), debugMode);
+            VhdlPrinter.print();
+
+
+            /* DISABLED UNTIL THE INPUT INTERFACES WITH DEXIMA ARE NOT STABLE! */
+            //PrintDexFile Printer(&(Compiler.MemArray), &(Compiler.FSMLim));
+            //Printer.print();
+            /* --------------------------------------------------------------- */
+
+            /*
+            //Dexima cad files generation
+            PrintCadFile CadFilePrinter(&(Binder.MemArray), &(Binder.FSMLim));
+            CadFilePrinter.print();
+            */
+
+            return false;
 
         }
-      }
-    }
 
+    private:
+        InstructionTable instructionTable;
 
-    CollectInfo InfoCollector(debugMode);
+        PrintConfig ConfigurationHandler;
 
-    //Start InfoCollector pass on the current function
-    InfoCollector.parseFunction(F, LI);
-
-
-
-    /////DEBUG/////
-    /*
-    if(debugMode){
-    InfoCollector.printAliasInfoMap();
-    errs() << "\n\n\n\n";
-    InfoCollector.printArrayInfoMap();
-    errs() << "\n\n\n\n";
-    InfoCollector.printIteratorsAliasMap();
-    errs() << "\n\n\n\n";
-    IM.printInstructionMap();
-    errs() << "\n\n\n\n";
-    (InfoCollector.PIT).printPointerInfoTable();
-    errs() << "\n\n\n\n";
-    (InfoCollector.LIT).printNestedLoopMap();
-    errs() << "\n\n\n\n";
-    (InfoCollector.LIT).printLoopInfoMap();
-    errs() << "\n\n\n\n";
-    InfoCollector.printAliasInfoMap();
-    errs() << "\n\n\n\n";
-    }
-    */
-    /////DEBUG/////
-
-
-
-    DependencyDetector DD(InfoCollector, debugMode);
-
-    DD.detectDependencies(InfoCollector.getValidBBs());
-
-    ASAP ASAPSched(DD.getDependencyGraph(), debugMode);
-
-    ASAPSched.scheduleFunction();
-
-    IM = ASAPSched.getScheduledIT();
-
-
-
-
-    LiMBinder Binder(IM, InfoCollector, debugMode);
-
-    /*
-    //.vhd file generation
-    PrintVhdlFile VhdlPrinter(&(Binder.MemArray), &(Binder.FSMLim), debugMode);
-    VhdlPrinter.print();
-    */
-
-    /* DISABLED UNTIL THE INPUT INTERFACES WITH DEXIMA ARE NOT STABLE! */
-    //PrintDexFile Printer(&(Compiler.MemArray), &(Compiler.FSMLim));
-    //Printer.print();
-    /* --------------------------------------------------------------- */
-
-    /*
-    //Dexima cad files generation
-    PrintCadFile CadFilePrinter(&(Binder.MemArray), &(Binder.FSMLim));
-    CadFilePrinter.print();
-    */
-
-    return false;
-    
-  }
-
-private:
-  InstructionTable IM;
-
-  PrintConfig ConfigurationHandler;
-
-};
+    };
 
 } // namespace octantis
 

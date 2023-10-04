@@ -22,5 +22,25 @@ Instructions for the compilation of the project - Warning: It may require many G
 
 -----------------------------------------------------------------------------------------------------
 
-After the building of the project, all the passes developed can be tested. More details will be released
-in the future version of the project.
+After the building of the project, all the passes developed can be tested. 
+
+Instructions for the usage of the project
+-----------------------------------------------------------------------------------------------------
+
+1. In order to provide an input C code to Octantis, execute the following commands:
+
+    ```
+    TESTNAME="name_of_c_code_file"
+    LLVMDIR="path/to/build/bin"
+    LIBDIR="path/to/build/lib"
+    TESTDIR="path/to/c_code"
+    
+    clear
+    clang -S -emit-llvm $TESTDIR/$TEST_NAME.c -o $TESTDIR/$TEST_NAME.ll
+    $LLVMDIR/opt -load $LIBDIR/LLVMOctantis.so -octantisPass -debugMode=0 $TESTDIR/$TEST_NAME.ll
+    ```
+
+2. The debugMode parameter can be set to '1' to enable printing useful messages during the synthesis process.
+3. The "Octantis.cfg" file must be put in the build directory.
+4. After the synthesis process is finished, results regarding the final architecture and the related timing information is stored in two files named respectively "LiMArray.txt" and "FSM.txt".
+5. Results related to the test conducted in the paper can be found in the folder "results".
