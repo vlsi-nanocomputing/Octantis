@@ -1,0 +1,12 @@
+Time t=0; Number of active rows: 1536
+Time t=1; Number of active rows: 768
+Time t=2; Number of active rows: 768
+Time t=3; Number of active rows: 1280
+Time t=4; Number of active rows: 1280
+Time t=5; Number of active rows: 768
+Total execution time: 5
+
+INFO:
+at time t=0, load operations involving input operands for the algorithm are carried out.
+Hence, the amount of memory rows that are active at t=0 refer to all those rows containing input operands for the algorithm, which are loaded at the beginning of the same algorithm execution.
+All time instants after t=0 are needed for the execution of the algorithm, hence the total execution time is equal to the last time instant provided in this file.
