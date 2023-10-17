@@ -1,0 +1,9 @@
+Total number of memory rows: 2074
+Total Number of bits: 16592
+
+[Row Type -> Count]
+LOAD -> 577
+ADD -> 1497
+SHR -> 0
+XOR -> 0
+Number of rows with muxes: 0

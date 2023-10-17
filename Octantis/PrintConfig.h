@@ -22,7 +22,7 @@ public:
     /// Function to print the configuration file
     void print();
 private:
-    string configFileName="Octantis.cfg";
+    string configFileName="Octantis.txt";
 };
 
 #endif // PRINTCONFIG_H

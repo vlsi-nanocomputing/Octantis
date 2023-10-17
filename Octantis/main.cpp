@@ -18,8 +18,6 @@ using namespace std;
 
 int main()
 {
-    PrintConfig printCFGFile;
-
 
     cout << "Hello World!" << endl;
     return 0;
