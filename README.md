@@ -1,9 +1,9 @@
 # The Octantis Project
 ### An High-Level Explorer for Logic-in-Memory architectures. :mag:
 
-Licence
+License
 -----------------------------------------------------------------------------------------------------
-© Andrea Marchesin 2020 (andrea.marchesin@studenti.polito.it) for Politecnico di Torino
+© 2023 Andrea Marchesin, Alessio Naclerio (andrea.marchesin@polito.it, alessio.naclerio@polito.it) for Politecnico di Torino.
 
 ***
 
@@ -43,4 +43,4 @@ Instructions for the usage of the project
 2. The debugMode parameter can be set to '1' to enable printing useful messages during the synthesis process.
 3. The "Octantis.cfg" file must be put in the build directory.
 4. After the synthesis process is finished, results regarding the final architecture and the related timing information is stored in two files named respectively "LiMArray.txt" and "FSM.txt".
-5. Results related to the test conducted in the paper can be found in the folder "results".
+5. Sample tests on Image Processing algorithms and associated results can be found in the folder "/Tests".
