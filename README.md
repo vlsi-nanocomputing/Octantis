@@ -1,9 +1,9 @@
 # The Octantis Project
 ### An High-Level Explorer for Logic-in-Memory architectures. :mag:
 
-Licence
+License
 -----------------------------------------------------------------------------------------------------
-© Andrea Marchesin 2020 (andrea.marchesin@studenti.polito.it) for Politecnico di Torino
+© 2023 Andrea Marchesin, Alessio Naclerio (andrea.marchesin@polito.it, alessio.naclerio@polito.it) for Politecnico di Torino.
 
 ***
 
