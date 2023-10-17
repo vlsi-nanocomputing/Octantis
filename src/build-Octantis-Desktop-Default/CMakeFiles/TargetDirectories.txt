@@ -1,3 +1,0 @@
-/home/andrea/Documenti/OctantisV1.0/The-Octantis-project/src/build-Octantis-Desktop-Default/CMakeFiles/rebuild_cache.dir
-/home/andrea/Documenti/OctantisV1.0/The-Octantis-project/src/build-Octantis-Desktop-Default/CMakeFiles/Octantis.dir
-/home/andrea/Documenti/OctantisV1.0/The-Octantis-project/src/build-Octantis-Desktop-Default/CMakeFiles/edit_cache.dir
