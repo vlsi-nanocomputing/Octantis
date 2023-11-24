@@ -1,3 +1,5 @@
+[![DOI](https://zenodo.org/badge/700281333.svg)](https://zenodo.org/doi/10.5281/zenodo.10017505)
+
 # The Octantis Project
 ### An High-Level Explorer for Logic-in-Memory architectures. :mag:
 
